@@ -3,6 +3,7 @@ import { defineCommand, runMain } from "citty";
 import { addCmd } from "./commands/add.js";
 import { listCmd } from "./commands/list.js";
 import { pollCmd } from "./commands/poll.js";
+import { removeCmd } from "./commands/remove.js";
 import { timelineCmd } from "./commands/timeline.js";
 
 const main = defineCommand({
@@ -13,6 +14,7 @@ const main = defineCommand({
   },
   subCommands: {
     add: addCmd,
+    remove: removeCmd,
     list: listCmd,
     poll: pollCmd,
     timeline: timelineCmd,

@@ -112,6 +112,23 @@ If anything ever wedges, `pnpm db:reset` wipes the file and the next CLI invocat
 
 API cost per poll cycle (rough): `N players × (1 list + 1 rank + 1 mastery)` + `M new matches × 2 (match + timeline)`. With a personal-key limit of 100 req / 2 min, an idle group of 5 players costs ~15 req/poll; an active poll picking up 5 new matches per player costs ~65 req/poll (≈80s under the cap).
 
+## Web UI (v2, in progress)
+
+A small read-only browser UI built with **Hono + HTMX** and Tailwind v4. Server-renders the same data the CLI exposes — no React, no SPA build.
+
+```bash
+pnpm dev:web      # tsx watch + tailwind --watch in parallel; serves http://localhost:5173
+pnpm web          # one-shot (assumes public/app.css is already built)
+pnpm web:css      # build the stylesheet
+```
+
+Pages:
+
+- `/` — chronological timeline with HTMX-driven filters (since / queue / player / limit). The filter form posts to `/fragments/timeline`, which returns an HTML table fragment swapped into the page.
+- `/players` — tracked players with last-poll and last-match timestamps.
+
+The visual style mirrors shadcn/ui (semantic Tailwind tokens, Card + Table + Badge patterns), but components are hand-rolled JSX under `src/web/components/ui.tsx` so they render in Hono's JSX runtime instead of React.
+
 ## Homelab deploy
 
 Containerised; runs as a one-shot `docker compose run` on a systemd timer.

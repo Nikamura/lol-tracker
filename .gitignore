@@ -1,5 +1,6 @@
 node_modules/
 dist/
+public/app.css
 *.log
 
 # Local config & data — keep out of git

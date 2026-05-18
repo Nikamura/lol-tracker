@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
 import type { Platform, Region } from "../config.js";
 import type {
   ChampionMastery,
@@ -56,12 +56,69 @@ export function upsertPlayer(
     .run();
 }
 
+export interface DeletePlayerResult {
+  player: Player;
+  orphanedMatches: number;
+}
+
+export function findPlayerByRiotId(
+  db: DB,
+  gameName: string,
+  tagLine: string,
+): Player | undefined {
+  return db
+    .select()
+    .from(players)
+    .where(and(eq(players.gameName, gameName), eq(players.tagLine, tagLine)))
+    .get();
+}
+
+export function findPlayersByGameName(db: DB, gameName: string): Player[] {
+  return db.select().from(players).where(eq(players.gameName, gameName)).all();
+}
+
+export function deletePlayer(
+  db: DB,
+  puuid: string,
+  options: { purgeOrphanMatches: boolean },
+): number {
+  return db.transaction((tx) => {
+    tx.delete(players).where(eq(players.puuid, puuid)).run();
+    if (!options.purgeOrphanMatches) return 0;
+    const orphans = tx
+      .select({ matchId: matches.matchId })
+      .from(matches)
+      .where(
+        sql`NOT EXISTS (SELECT 1 FROM ${matchParticipants} mp INNER JOIN ${players} pl ON pl.puuid = mp.puuid WHERE mp.match_id = ${matches.matchId})`,
+      )
+      .all();
+    if (orphans.length === 0) return 0;
+    tx.delete(matches)
+      .where(inArray(matches.matchId, orphans.map((o) => o.matchId)))
+      .run();
+    return orphans.length;
+  });
+}
+
 export function listPlayers(db: DB): Player[] {
   return db
     .select()
     .from(players)
     .orderBy(asc(players.displayName), asc(players.gameName))
     .all();
+}
+
+export function lastPlayedByPuuid(db: DB): Map<string, number> {
+  const rows = db
+    .select({
+      puuid: matchParticipants.puuid,
+      lastPlayed: sql<number>`MAX(${matches.gameStart})`,
+    })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
+    .groupBy(matchParticipants.puuid)
+    .all();
+  return new Map(rows.map((r) => [r.puuid, r.lastPlayed]));
 }
 
 export function getIngestState(db: DB, puuid: string): IngestStateRow | undefined {
@@ -307,17 +364,43 @@ export interface TimelineRow {
   matchId: string;
   gameStart: number;
   gameDuration: number;
+  gameVersion: string;
   queueId: number;
   gameMode: string;
   puuid: string;
   displayName: string | null;
   gameName: string;
   championName: string;
+  champLevel: number | null;
   teamPosition: string | null;
+  teamId: number;
   win: boolean;
   kills: number;
   deaths: number;
   assists: number;
+  totalMinionsKilled: number | null;
+  neutralMinionsKilled: number | null;
+  goldEarned: number | null;
+  visionScore: number | null;
+  summoner1Id: number | null;
+  summoner2Id: number | null;
+  perksPrimaryStyle: number | null;
+  perksSubStyle: number | null;
+  perksKeystone: number | null;
+  item0: number | null;
+  item1: number | null;
+  item2: number | null;
+  item3: number | null;
+  item4: number | null;
+  item5: number | null;
+  item6: number | null;
+  doubleKills: number | null;
+  tripleKills: number | null;
+  quadraKills: number | null;
+  pentaKills: number | null;
+  firstBloodKill: boolean | null;
+  gameEndedInSurrender: boolean | null;
+  teamEarlySurrendered: boolean | null;
 }
 
 export interface TimelineFilter {
@@ -325,6 +408,232 @@ export interface TimelineFilter {
   puuids?: string[];
   queueIds?: number[];
   limit?: number;
+}
+
+export interface PartyRow {
+  matchId: string;
+  teamId: number;
+  gameStart: number;
+  gameDuration: number;
+  queueId: number;
+  gameMode: string;
+  win: boolean;
+  members: TimelineRow[];
+}
+
+export function queryParties(db: DB, f: TimelineFilter = {}): PartyRow[] {
+  const rows = queryTimeline(db, { ...f, limit: 1_000 });
+
+  const grouped = new Map<string, PartyRow>();
+  for (const r of rows) {
+    const key = `${r.matchId}|${r.teamId}`;
+    let entry = grouped.get(key);
+    if (!entry) {
+      entry = {
+        matchId: r.matchId,
+        teamId: r.teamId,
+        gameStart: r.gameStart,
+        gameDuration: r.gameDuration,
+        queueId: r.queueId,
+        gameMode: r.gameMode,
+        win: r.win,
+        members: [],
+      };
+      grouped.set(key, entry);
+    }
+    entry.members.push(r);
+  }
+
+  return [...grouped.values()]
+    .sort((a, b) => b.gameStart - a.gameStart)
+    .slice(0, f.limit ?? 50);
+}
+
+export interface MatchDetailParticipant {
+  puuid: string;
+  teamId: number;
+  championName: string;
+  teamPosition: string | null;
+  win: boolean;
+  kills: number;
+  deaths: number;
+  assists: number;
+  goldEarned: number | null;
+  totalMinionsKilled: number | null;
+  neutralMinionsKilled: number | null;
+  visionScore: number | null;
+  totalDamageDealtToChampions: number | null;
+  totalDamageTaken: number | null;
+  damageDealtToObjectives: number | null;
+  champLevel: number | null;
+  item0: number | null;
+  item1: number | null;
+  item2: number | null;
+  item3: number | null;
+  item4: number | null;
+  item5: number | null;
+  item6: number | null;
+  riotIdGameName: string | null;
+  riotIdTagline: string | null;
+  trackedDisplayName: string | null;
+}
+
+export interface MatchDetail {
+  matchId: string;
+  gameStart: number;
+  gameDuration: number;
+  queueId: number;
+  gameMode: string;
+  participants: MatchDetailParticipant[];
+}
+
+export interface RankInfo {
+  queueType: string;
+  tier: string | null;
+  rank: string | null;
+  leaguePoints: number | null;
+}
+
+export interface MatchRaw {
+  match: Match;
+  timeline: MatchTimeline | undefined;
+  trackedNames: Map<string, string>;
+  trackedRanks: Map<string, RankInfo>;
+}
+
+const SOLO_QUEUE = "RANKED_SOLO_5x5";
+
+export function latestRanksBefore(
+  db: DB,
+  puuids: string[],
+  beforeMs: number,
+): Map<string, RankInfo> {
+  const out = new Map<string, RankInfo>();
+  if (puuids.length === 0) return out;
+  for (const puuid of puuids) {
+    const before = db
+      .select({
+        queueType: playerRankSnapshots.queueType,
+        tier: playerRankSnapshots.tier,
+        rank: playerRankSnapshots.rank,
+        leaguePoints: playerRankSnapshots.leaguePoints,
+      })
+      .from(playerRankSnapshots)
+      .where(
+        and(
+          eq(playerRankSnapshots.puuid, puuid),
+          eq(playerRankSnapshots.queueType, SOLO_QUEUE),
+          lte(playerRankSnapshots.capturedAt, beforeMs),
+        ),
+      )
+      .orderBy(desc(playerRankSnapshots.capturedAt))
+      .limit(1)
+      .get();
+    const row =
+      before ??
+      db
+        .select({
+          queueType: playerRankSnapshots.queueType,
+          tier: playerRankSnapshots.tier,
+          rank: playerRankSnapshots.rank,
+          leaguePoints: playerRankSnapshots.leaguePoints,
+        })
+        .from(playerRankSnapshots)
+        .where(
+          and(
+            eq(playerRankSnapshots.puuid, puuid),
+            eq(playerRankSnapshots.queueType, SOLO_QUEUE),
+          ),
+        )
+        .orderBy(asc(playerRankSnapshots.capturedAt))
+        .limit(1)
+        .get();
+    if (row && row.tier) {
+      out.set(puuid, {
+        queueType: row.queueType,
+        tier: row.tier,
+        rank: row.rank,
+        leaguePoints: row.leaguePoints,
+      });
+    }
+  }
+  return out;
+}
+
+export function getMatchRaw(db: DB, matchId: string): MatchRaw | undefined {
+  const head = db.select().from(matches).where(eq(matches.matchId, matchId)).get();
+  if (!head) return undefined;
+  const tl = db
+    .select({ rawJson: matchTimelines.rawJson })
+    .from(matchTimelines)
+    .where(eq(matchTimelines.matchId, matchId))
+    .get();
+  const tracked = db
+    .select({
+      puuid: matchParticipants.puuid,
+      displayName: players.displayName,
+      gameName: players.gameName,
+    })
+    .from(matchParticipants)
+    .innerJoin(players, eq(players.puuid, matchParticipants.puuid))
+    .where(eq(matchParticipants.matchId, matchId))
+    .all();
+  const trackedPuuids = tracked.map((t) => t.puuid);
+  return {
+    match: head.rawJson,
+    timeline: tl?.rawJson,
+    trackedNames: new Map(tracked.map((t) => [t.puuid, t.displayName ?? t.gameName])),
+    trackedRanks: latestRanksBefore(db, trackedPuuids, head.gameStart),
+  };
+}
+
+export function queryMatchDetail(db: DB, matchId: string): MatchDetail | undefined {
+  const head = db.select().from(matches).where(eq(matches.matchId, matchId)).get();
+  if (!head) return undefined;
+
+  const rows = db
+    .select({
+      puuid: matchParticipants.puuid,
+      teamId: matchParticipants.teamId,
+      championName: matchParticipants.championName,
+      teamPosition: matchParticipants.teamPosition,
+      win: matchParticipants.win,
+      kills: matchParticipants.kills,
+      deaths: matchParticipants.deaths,
+      assists: matchParticipants.assists,
+      goldEarned: matchParticipants.goldEarned,
+      totalMinionsKilled: matchParticipants.totalMinionsKilled,
+      neutralMinionsKilled: matchParticipants.neutralMinionsKilled,
+      visionScore: matchParticipants.visionScore,
+      totalDamageDealtToChampions: matchParticipants.totalDamageDealtToChampions,
+      totalDamageTaken: matchParticipants.totalDamageTaken,
+      damageDealtToObjectives: matchParticipants.damageDealtToObjectives,
+      champLevel: matchParticipants.champLevel,
+      item0: matchParticipants.item0,
+      item1: matchParticipants.item1,
+      item2: matchParticipants.item2,
+      item3: matchParticipants.item3,
+      item4: matchParticipants.item4,
+      item5: matchParticipants.item5,
+      item6: matchParticipants.item6,
+      riotIdGameName: matchParticipants.riotIdGameName,
+      riotIdTagline: matchParticipants.riotIdTagline,
+      trackedDisplayName: players.displayName,
+    })
+    .from(matchParticipants)
+    .leftJoin(players, eq(players.puuid, matchParticipants.puuid))
+    .where(eq(matchParticipants.matchId, matchId))
+    .orderBy(asc(matchParticipants.teamId))
+    .all();
+
+  return {
+    matchId: head.matchId,
+    gameStart: head.gameStart,
+    gameDuration: head.gameDuration,
+    queueId: head.queueId,
+    gameMode: head.gameMode,
+    participants: rows,
+  };
 }
 
 export function queryTimeline(db: DB, f: TimelineFilter = {}): TimelineRow[] {
@@ -338,17 +647,43 @@ export function queryTimeline(db: DB, f: TimelineFilter = {}): TimelineRow[] {
       matchId: matches.matchId,
       gameStart: matches.gameStart,
       gameDuration: matches.gameDuration,
+      gameVersion: matches.gameVersion,
       queueId: matches.queueId,
       gameMode: matches.gameMode,
       puuid: matchParticipants.puuid,
       displayName: players.displayName,
       gameName: players.gameName,
       championName: matchParticipants.championName,
+      champLevel: matchParticipants.champLevel,
       teamPosition: matchParticipants.teamPosition,
+      teamId: matchParticipants.teamId,
       win: matchParticipants.win,
       kills: matchParticipants.kills,
       deaths: matchParticipants.deaths,
       assists: matchParticipants.assists,
+      totalMinionsKilled: matchParticipants.totalMinionsKilled,
+      neutralMinionsKilled: matchParticipants.neutralMinionsKilled,
+      goldEarned: matchParticipants.goldEarned,
+      visionScore: matchParticipants.visionScore,
+      summoner1Id: matchParticipants.summoner1Id,
+      summoner2Id: matchParticipants.summoner2Id,
+      perksPrimaryStyle: matchParticipants.perksPrimaryStyle,
+      perksSubStyle: matchParticipants.perksSubStyle,
+      perksKeystone: matchParticipants.perksKeystone,
+      item0: matchParticipants.item0,
+      item1: matchParticipants.item1,
+      item2: matchParticipants.item2,
+      item3: matchParticipants.item3,
+      item4: matchParticipants.item4,
+      item5: matchParticipants.item5,
+      item6: matchParticipants.item6,
+      doubleKills: matchParticipants.doubleKills,
+      tripleKills: matchParticipants.tripleKills,
+      quadraKills: matchParticipants.quadraKills,
+      pentaKills: matchParticipants.pentaKills,
+      firstBloodKill: matchParticipants.firstBloodKill,
+      gameEndedInSurrender: matchParticipants.gameEndedInSurrender,
+      teamEarlySurrendered: matchParticipants.teamEarlySurrendered,
     })
     .from(matchParticipants)
     .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))

@@ -9,42 +9,7 @@ import {
   type TimelineFilter,
   type TimelineRow,
 } from "../db/queries.js";
-
-const QUEUE_NAMES: Record<number, string> = {
-  400: "Normal Draft",
-  420: "Ranked Solo",
-  430: "Normal Blind",
-  440: "Ranked Flex",
-  450: "ARAM",
-  490: "Quickplay",
-  700: "Clash",
-  720: "ARAM Clash",
-  830: "Co-op vs AI Intro",
-  840: "Co-op vs AI Beginner",
-  850: "Co-op vs AI Intermediate",
-  900: "URF",
-  1700: "Arena",
-  1900: "URF",
-};
-
-const QUEUE_GROUPS: Record<string, number[]> = {
-  ranked: [420, 440],
-  soloq: [420],
-  flex: [440],
-  normal: [400, 430, 490],
-  aram: [450],
-  arena: [1700],
-};
-
-function parseSince(input: string | undefined): number | undefined {
-  if (!input) return undefined;
-  const m = /^(\d+)([dhm])$/.exec(input);
-  if (!m) throw new Error(`--since must look like '7d', '12h', or '30m'. Got: ${input}`);
-  const n = Number(m[1]);
-  const unit = m[2] as "d" | "h" | "m";
-  const ms = unit === "d" ? 86_400_000 : unit === "h" ? 3_600_000 : 60_000;
-  return Date.now() - n * ms;
-}
+import { QUEUE_GROUPS, QUEUE_NAMES, parseSince, resolveQueueFilter } from "../lib/queues.js";
 
 function fmtDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -131,18 +96,7 @@ export const timelineCmd = defineCommand({
       puuids = matched.map((p) => p.puuid);
     }
 
-    let queueIds: number[] | undefined;
-    if (args.queue) {
-      const key = args.queue.toLowerCase();
-      const group = QUEUE_GROUPS[key];
-      if (group) {
-        queueIds = group;
-      } else {
-        const n = Number(args.queue);
-        if (!Number.isFinite(n)) throw new Error(`Unknown queue filter: ${args.queue}`);
-        queueIds = [n];
-      }
-    }
+    const queueIds = resolveQueueFilter(args.queue);
 
     const filter: TimelineFilter = { limit: Number(args.limit) };
     if (sinceMs !== undefined) filter.sinceMs = sinceMs;
