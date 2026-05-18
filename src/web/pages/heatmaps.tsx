@@ -214,13 +214,24 @@ export const HeatmapsPage: FC<HeatmapsProps> = ({ data, filters }) => {
   const totalGames = data.aggregate.cells.reduce((sum, c) => sum + c.games, 0);
   const playerCount = data.perPlayer.length;
   return (
-    <div class="flex flex-col gap-6">
-      <header class="flex flex-col gap-1">
-        <h1 class="font-display text-2xl font-semibold tracking-tight">Heatmaps</h1>
-        <p class="text-muted-foreground text-sm">
-          When each tracked friend plays and how they perform across hour-of-day x
-          day-of-week. Buckets use the server's local timezone.
-        </p>
+    <div class="flex flex-col gap-6 pt-8">
+      <header class="flex items-end justify-between gap-4 border-b border-border/40 pb-4">
+        <div class="flex flex-col gap-1">
+          <span class="scoreboard-eyebrow">FEED · 04 · SCHEDULE</span>
+          <h1 class="font-display text-foreground text-4xl leading-none tracking-tight uppercase">
+            Heatmaps
+          </h1>
+          <p class="text-muted-foreground text-sm">
+            When each tracked friend plays and how they perform across hour-of-day × day-of-week.
+            Buckets use the server's local timezone.
+          </p>
+        </div>
+        <div class="hidden md:flex flex-col items-end gap-1">
+          <span class="scoreboard-eyebrow">Players</span>
+          <span class="font-mono text-foreground text-2xl leading-none">
+            {String(playerCount).padStart(2, "0")}
+          </span>
+        </div>
       </header>
 
       <Card>

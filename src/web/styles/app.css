@@ -1,56 +1,79 @@
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap");
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-:root {
-  --radius: 0.625rem;
+/* ---------------------------------------------------------------------------
+ * Theme tokens — Tournament Broadcast Brutalist
+ *
+ * Deep cool-navy ink with three high-saturation broadcast accents:
+ *   - acid lime  → primary / success / live
+ *   - hot red    → destructive / defeat
+ *   - amber      → MVP / warning
+ *
+ * Radius held to 2px max to keep the scoreboard slab feel.
+ * ------------------------------------------------------------------------ */
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+:root {
+  --radius: 0.125rem;
+
+  --background: oklch(0.99 0.01 95);
+  --foreground: oklch(0.18 0.025 265);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.18 0.025 265);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.696 0.17 162.48);
-  --success-foreground: oklch(0.145 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.18 0.025 265);
+  --primary: oklch(0.78 0.22 130);
+  --primary-foreground: oklch(0.18 0.025 265);
+  --secondary: oklch(0.94 0.012 264);
+  --secondary-foreground: oklch(0.18 0.025 265);
+  --muted: oklch(0.95 0.012 264);
+  --muted-foreground: oklch(0.5 0.04 257);
+  --accent: oklch(0.95 0.012 264);
+  --accent-foreground: oklch(0.18 0.025 265);
+  --destructive: oklch(0.66 0.27 14);
+  --destructive-foreground: oklch(0.99 0.01 95);
+  --success: oklch(0.78 0.22 130);
+  --success-foreground: oklch(0.18 0.025 265);
+  --warning: oklch(0.83 0.18 82);
+  --warning-foreground: oklch(0.18 0.025 265);
+  --border: oklch(0.88 0.015 264);
+  --input: oklch(0.88 0.015 264);
+  --ring: oklch(0.78 0.22 130);
+  --chrome: oklch(0.92 0.012 264);
+
+  --bg-mesh: radial-gradient(ellipse 80% 50% at 50% -20%, oklch(0.95 0.04 130 / 0.5), transparent 60%);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.696 0.17 162.48);
-  --success-foreground: oklch(0.145 0 0);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --background: oklch(0.16 0.035 268);
+  --foreground: oklch(0.97 0.012 85);
+  --card: oklch(0.2 0.04 264);
+  --card-foreground: oklch(0.97 0.012 85);
+  --popover: oklch(0.18 0.04 264);
+  --popover-foreground: oklch(0.97 0.012 85);
+  --primary: oklch(0.88 0.24 132);
+  --primary-foreground: oklch(0.16 0.035 268);
+  --secondary: oklch(0.26 0.04 264);
+  --secondary-foreground: oklch(0.97 0.012 85);
+  --muted: oklch(0.24 0.04 264);
+  --muted-foreground: oklch(0.62 0.05 257);
+  --accent: oklch(0.26 0.04 264);
+  --accent-foreground: oklch(0.97 0.012 85);
+  --destructive: oklch(0.68 0.27 14);
+  --destructive-foreground: oklch(0.97 0.012 85);
+  --success: oklch(0.88 0.24 132);
+  --success-foreground: oklch(0.16 0.035 268);
+  --warning: oklch(0.84 0.18 82);
+  --warning-foreground: oklch(0.16 0.035 268);
+  --border: oklch(0.3 0.045 258);
+  --input: oklch(0.28 0.045 258);
+  --ring: oklch(0.88 0.24 132);
+  --chrome: oklch(0.34 0.05 258);
+
+  --bg-mesh:
+    radial-gradient(ellipse 60% 40% at 20% -10%, oklch(0.4 0.18 132 / 0.18), transparent 65%),
+    radial-gradient(ellipse 50% 35% at 90% 10%, oklch(0.45 0.22 14 / 0.13), transparent 60%);
 }
 
 @theme inline {
@@ -72,21 +95,24 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-chrome: var(--chrome);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
 
   --font-sans:
-    "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-display:
-    "DM Sans", ui-sans-serif, system-ui, sans-serif;
+    "Bebas Neue", "Antonio", "Oswald", ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
@@ -106,10 +132,32 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    font-feature-settings:
-      "ss01" on,
-      "cv11" on;
+    font-feature-settings: "ss01" on, "cv11" on;
     -webkit-font-smoothing: antialiased;
+    background-image: var(--bg-mesh);
+    background-attachment: fixed;
+  }
+
+  /* Page-wide scanline overlay — broadcast garnish, very low opacity */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 3px,
+      oklch(1 0 0 / 0.018) 3px,
+      oklch(1 0 0 / 0.018) 4px
+    );
+    z-index: 1;
+    mix-blend-mode: overlay;
+  }
+
+  body > * {
+    position: relative;
+    z-index: 2;
   }
 
   .tabular-nums,
@@ -122,6 +170,11 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
+
   .htmx-indicator {
     opacity: 0;
     transition: opacity 150ms ease-in;
@@ -130,4 +183,65 @@
   .htmx-request.htmx-indicator {
     opacity: 1;
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * Broadcast garnish utilities
+ * ------------------------------------------------------------------------ */
+@utility scoreboard-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+@utility kicker {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 0.95;
+}
+
+/* Tactical corner brackets — wraps an element with 4 corner L-marks.
+ * Use as: <div class="bracketed"> ... </div>
+ */
+@utility bracketed {
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(to right, currentColor 12px, transparent 12px) top left / 12px 1px no-repeat,
+      linear-gradient(to bottom, currentColor 12px, transparent 12px) top left / 1px 12px no-repeat,
+      linear-gradient(to left, currentColor 12px, transparent 12px) top right / 12px 1px no-repeat,
+      linear-gradient(to bottom, currentColor 12px, transparent 12px) top right / 1px 12px no-repeat,
+      linear-gradient(to right, currentColor 12px, transparent 12px) bottom left / 12px 1px no-repeat,
+      linear-gradient(to top, currentColor 12px, transparent 12px) bottom left / 1px 12px no-repeat,
+      linear-gradient(to left, currentColor 12px, transparent 12px) bottom right / 12px 1px no-repeat,
+      linear-gradient(to top, currentColor 12px, transparent 12px) bottom right / 1px 12px no-repeat;
+    opacity: 0.45;
+  }
+}
+
+/* Pulsing dot — for "live" markers */
+@keyframes lol-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.75); }
+}
+@utility pulse-dot {
+  animation: lol-pulse 1.6s ease-in-out infinite;
+}
+
+/* Number-flip enter — for big stat counters */
+@keyframes lol-tick-in {
+  from { transform: translateY(8%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@utility tick-in {
+  animation: lol-tick-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }

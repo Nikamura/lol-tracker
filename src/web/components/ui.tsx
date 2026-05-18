@@ -45,17 +45,28 @@ export const Button: FC<ButtonProps> = ({
 );
 
 export const Card: FC<PropsWithChildren<{ class?: string }>> = ({ children, class: cls }) => (
-  <div class={cn("bg-card text-card-foreground rounded-xl border shadow-sm", cls)}>
+  <div
+    class={cn(
+      "bg-card text-card-foreground border border-border/70 rounded-sm",
+      // subtle inner highlight + drop shadow gives a broadcast monitor feel
+      "shadow-[0_1px_0_oklch(1_0_0/0.04)_inset,0_18px_60px_-32px_oklch(0_0_0/0.6)]",
+      cls,
+    )}
+  >
     {children}
   </div>
 );
 
 export const CardHeader: FC<PropsWithChildren<{ class?: string }>> = ({ children, class: cls }) => (
-  <div class={cn("flex flex-col gap-1.5 px-6 py-4", cls)}>{children}</div>
+  <div class={cn("flex flex-col gap-1.5 px-5 py-3 border-b border-border/40", cls)}>
+    {children}
+  </div>
 );
 
 export const CardTitle: FC<PropsWithChildren<{ class?: string }>> = ({ children, class: cls }) => (
-  <h3 class={cn("text-lg font-semibold leading-none tracking-tight", cls)}>{children}</h3>
+  <h3 class={cn("font-display text-foreground text-xl leading-none tracking-wide uppercase", cls)}>
+    {children}
+  </h3>
 );
 
 export const CardDescription: FC<PropsWithChildren<{ class?: string }>> = ({ children, class: cls }) => (
@@ -63,11 +74,11 @@ export const CardDescription: FC<PropsWithChildren<{ class?: string }>> = ({ chi
 );
 
 export const CardContent: FC<PropsWithChildren<{ class?: string }>> = ({ children, class: cls }) => (
-  <div class={cn("px-6 py-4", cls)}>{children}</div>
+  <div class={cn("px-5 py-4", cls)}>{children}</div>
 );
 
 export const CardFooter: FC<PropsWithChildren<{ class?: string }>> = ({ children, class: cls }) => (
-  <div class={cn("flex items-center px-6 py-4", cls)}>{children}</div>
+  <div class={cn("flex items-center px-5 py-3 border-t border-border/40", cls)}>{children}</div>
 );
 
 type BadgeVariant = "default" | "secondary" | "outline" | "destructive" | "success";
@@ -75,10 +86,9 @@ type BadgeVariant = "default" | "secondary" | "outline" | "destructive" | "succe
 const badgeVariants: Record<BadgeVariant, string> = {
   default: "border-transparent bg-primary text-primary-foreground",
   secondary: "border-transparent bg-secondary text-secondary-foreground",
-  outline: "text-foreground",
+  outline: "text-foreground border-border/70",
   destructive: "border-transparent bg-destructive text-destructive-foreground",
-  success:
-    "border-success/30 bg-success/15 text-success [--success:oklch(0.696_0.17_162.48)]",
+  success: "border-transparent bg-success text-success-foreground",
 };
 
 export const Badge: FC<PropsWithChildren<{ variant?: BadgeVariant; class?: string }>> = ({
@@ -88,7 +98,8 @@ export const Badge: FC<PropsWithChildren<{ variant?: BadgeVariant; class?: strin
 }) => (
   <span
     class={cn(
-      "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium",
+      "kicker inline-flex items-center rounded-sm border px-2 py-0.5 text-[10px] leading-none",
+      "tracking-[0.16em]",
       badgeVariants[variant],
       cls,
     )}
@@ -149,7 +160,10 @@ type InputProps = Omit<JSX.IntrinsicElements["input"], "class" | "className"> & 
 export const Input: FC<InputProps> = ({ class: cls, ...rest }) => (
   <input
     class={cn(
-      "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+      "flex h-9 w-full rounded-sm border border-input bg-background/60 px-3 py-1 text-sm font-mono",
+      "placeholder:text-muted-foreground placeholder:font-sans",
+      "focus-visible:outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring",
+      "disabled:cursor-not-allowed disabled:opacity-50",
       cls,
     )}
     {...rest}
@@ -163,7 +177,9 @@ type SelectProps = Omit<JSX.IntrinsicElements["select"], "class" | "className"> 
 export const Select: FC<PropsWithChildren<SelectProps>> = ({ class: cls, children, ...rest }) => (
   <select
     class={cn(
-      "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+      "flex h-9 w-full rounded-sm border border-input bg-background/60 px-3 py-1 text-sm",
+      "focus-visible:outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring",
+      "disabled:cursor-not-allowed disabled:opacity-50",
       cls,
     )}
     {...rest}
@@ -177,7 +193,7 @@ export const Label: FC<PropsWithChildren<{ for?: string; class?: string }>> = ({
   class: cls,
   children,
 }) => (
-  <label for={htmlFor} class={cn("text-xs font-medium text-muted-foreground", cls)}>
+  <label for={htmlFor} class={cn("scoreboard-eyebrow", cls)}>
     {children}
   </label>
 );

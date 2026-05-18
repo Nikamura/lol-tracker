@@ -196,15 +196,17 @@ export const StreaksBody: FC<{ data: StreaksData }> = ({ data }) => {
 };
 
 export const StreaksPage: FC<StreaksProps> = ({ data, filters }) => (
-  <div class="flex flex-col gap-6">
-    <header class="flex flex-col gap-1">
-      <h1 class="font-display text-2xl font-semibold tracking-tight">
-        Streaks & tilt
-      </h1>
-      <p class="text-muted-foreground text-sm">
-        Winning/losing streaks, last-10 form, and late-night sessions per tracked
-        player.
-      </p>
+  <div class="flex flex-col gap-6 pt-8">
+    <header class="flex items-end justify-between gap-4 border-b border-border/40 pb-4">
+      <div class="flex flex-col gap-1">
+        <span class="scoreboard-eyebrow">FEED · 03 · MOMENTUM</span>
+        <h1 class="font-display text-foreground text-4xl leading-none tracking-tight uppercase">
+          Streaks &amp; tilt
+        </h1>
+        <p class="text-muted-foreground text-sm">
+          Winning/losing streaks, last-10 form, and late-night sessions per tracked player.
+        </p>
+      </div>
     </header>
 
     <Card>

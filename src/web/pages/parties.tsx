@@ -48,28 +48,44 @@ export const PartyCard: FC<{ party: PartyRow }> = ({ party }) => {
   return (
     <section
       class={cn(
-        "overflow-hidden rounded-2xl border",
-        party.win
-          ? "bg-gradient-to-br from-success/[0.05] via-card to-card"
-          : "bg-gradient-to-br from-destructive/[0.05] via-card to-card",
+        "overflow-hidden rounded-sm border border-border/70",
+        "relative bg-card",
+        "shadow-[0_18px_60px_-32px_oklch(0_0_0/0.6)]",
       )}
     >
-      <header class="flex flex-wrap items-baseline justify-between gap-3 border-b px-5 py-3">
-        <div class="flex items-baseline gap-3">
-          <h2 class="font-display text-base font-semibold tracking-tight">{title}</h2>
-          <p class="text-muted-foreground font-mono text-xs">
-            {fmtWhen(party.gameStart)} · {fmtDuration(party.gameDuration)}
-          </p>
-        </div>
-        {party.win ? (
-          <Badge variant="success">Victory</Badge>
-        ) : (
-          <Badge variant="destructive">Defeat</Badge>
+      {/* result rail along the top */}
+      <span
+        class={cn(
+          "absolute inset-x-0 top-0 h-[3px]",
+          party.win ? "bg-success" : "bg-destructive",
         )}
+        aria-hidden="true"
+      />
+      <header class="flex flex-wrap items-stretch justify-between gap-3 border-b border-border/40 px-5 py-3">
+        <div class="flex flex-col gap-1">
+          <span class="scoreboard-eyebrow">
+            {fmtWhen(party.gameStart)} · {fmtDuration(party.gameDuration)} · {queue}
+          </span>
+          <h2 class="font-display text-foreground text-xl leading-none tracking-wide uppercase">
+            {title}
+          </h2>
+        </div>
+        <div class="flex items-center">
+          <span
+            class={cn(
+              "kicker text-2xl tracking-[0.22em]",
+              party.win ? "text-success" : "text-destructive",
+            )}
+          >
+            {party.win ? "Victory" : "Defeat"}
+          </span>
+        </div>
       </header>
-      <div class="flex flex-col gap-2 p-3">
+      <div class="flex flex-col divide-y divide-border/40">
         {ordered.map((m) => (
-          <MatchRow row={m} embedded showPlayer={!solo} />
+          <div class="px-3 py-2">
+            <MatchRow row={m} embedded showPlayer={!solo} />
+          </div>
         ))}
       </div>
       <MatchExpand matchId={party.matchId} label="Show full match" />

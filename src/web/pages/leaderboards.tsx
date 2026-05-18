@@ -160,13 +160,24 @@ export const LeaderboardsBody: FC<{ data: LeaderboardData }> = ({ data }) => {
 };
 
 export const LeaderboardsPage: FC<LeaderboardsPageProps> = ({ data, filters }) => (
-  <div class="flex flex-col gap-6">
-    <header class="flex flex-col gap-1">
-      <h1 class="font-display text-2xl font-semibold tracking-tight">Leaderboards</h1>
-      <p class="text-muted-foreground text-sm">
-        Head-to-head rankings across every tracked friend. Per-minute stats exclude Arena
-        unless the queue filter is set to arena.
-      </p>
+  <div class="flex flex-col gap-6 pt-8">
+    <header class="flex items-end justify-between gap-4 border-b border-border/40 pb-4">
+      <div class="flex flex-col gap-1">
+        <span class="scoreboard-eyebrow">FEED · 02 · RANKINGS</span>
+        <h1 class="font-display text-foreground text-4xl leading-none tracking-tight uppercase">
+          Leaderboards
+        </h1>
+        <p class="text-muted-foreground text-sm">
+          Head-to-head rankings across every tracked friend. Per-minute stats exclude
+          Arena unless the queue filter is set to arena.
+        </p>
+      </div>
+      <div class="hidden md:flex flex-col items-end gap-1">
+        <span class="scoreboard-eyebrow">Categories</span>
+        <span class="font-mono text-foreground text-2xl leading-none">
+          {String(data.categories.length).padStart(2, "0")}
+        </span>
+      </div>
     </header>
 
     <Card>
