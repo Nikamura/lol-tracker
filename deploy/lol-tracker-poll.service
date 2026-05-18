@@ -1,0 +1,9 @@
+[Unit]
+Description=Poll Riot API for new LoL matches
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/lol-tracker
+ExecStart=/usr/bin/docker compose run --rm lol-tracker poll

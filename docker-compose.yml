@@ -1,0 +1,10 @@
+services:
+  lol-tracker:
+    build: .
+    image: lol-tracker:latest
+    environment:
+      RIOT_API_KEY: ${RIOT_API_KEY:?set RIOT_API_KEY in .env}
+      LOL_TRACKER_DB: /data/lol-tracker.db
+    volumes:
+      - ./data:/data
+    restart: "no"

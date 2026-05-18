@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+
+# Local config & data — keep out of git
+.env
+.env.local
+data/

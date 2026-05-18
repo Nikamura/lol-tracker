@@ -1,0 +1,166 @@
+CREATE TABLE `ingest_state` (
+	`puuid` text PRIMARY KEY NOT NULL,
+	`last_polled_at` integer,
+	`last_match_start` integer,
+	`last_rank_at` integer,
+	`last_mastery_at` integer,
+	FOREIGN KEY (`puuid`) REFERENCES `players`(`puuid`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `match_participants` (
+	`match_id` text NOT NULL,
+	`puuid` text NOT NULL,
+	`champion_id` integer NOT NULL,
+	`champion_name` text NOT NULL,
+	`team_id` integer NOT NULL,
+	`team_position` text,
+	`individual_position` text,
+	`lane` text,
+	`role` text,
+	`win` integer NOT NULL,
+	`kills` integer NOT NULL,
+	`deaths` integer NOT NULL,
+	`assists` integer NOT NULL,
+	`champ_level` integer,
+	`champ_experience` integer,
+	`champion_transform` integer,
+	`gold_earned` integer,
+	`gold_spent` integer,
+	`total_minions_killed` integer,
+	`neutral_minions_killed` integer,
+	`vision_score` integer,
+	`wards_placed` integer,
+	`wards_killed` integer,
+	`detector_wards_placed` integer,
+	`vision_wards_bought` integer,
+	`total_damage_dealt` integer,
+	`total_damage_dealt_to_champions` integer,
+	`physical_damage_to_champions` integer,
+	`magic_damage_to_champions` integer,
+	`true_damage_to_champions` integer,
+	`total_damage_taken` integer,
+	`damage_self_mitigated` integer,
+	`total_heal` integer,
+	`total_heals_on_teammates` integer,
+	`damage_dealt_to_objectives` integer,
+	`damage_dealt_to_turrets` integer,
+	`damage_dealt_to_buildings` integer,
+	`time_ccing_others` integer,
+	`total_time_cc_dealt` integer,
+	`total_time_spent_dead` integer,
+	`longest_time_spent_living` integer,
+	`largest_killing_spree` integer,
+	`largest_multi_kill` integer,
+	`killing_sprees` integer,
+	`double_kills` integer,
+	`triple_kills` integer,
+	`quadra_kills` integer,
+	`penta_kills` integer,
+	`first_blood_kill` integer,
+	`first_blood_assist` integer,
+	`first_tower_kill` integer,
+	`first_tower_assist` integer,
+	`turret_kills` integer,
+	`turret_takedowns` integer,
+	`inhibitor_kills` integer,
+	`inhibitor_takedowns` integer,
+	`dragon_kills` integer,
+	`baron_kills` integer,
+	`objectives_stolen` integer,
+	`objectives_stolen_assists` integer,
+	`game_ended_in_surrender` integer,
+	`game_ended_in_early_surrender` integer,
+	`team_early_surrendered` integer,
+	`summoner1_id` integer,
+	`summoner2_id` integer,
+	`summoner1_casts` integer,
+	`summoner2_casts` integer,
+	`item0` integer,
+	`item1` integer,
+	`item2` integer,
+	`item3` integer,
+	`item4` integer,
+	`item5` integer,
+	`item6` integer,
+	`perks_primary_style` integer,
+	`perks_sub_style` integer,
+	`perks_keystone` integer,
+	`perks_json` text,
+	`challenges_json` text,
+	`riot_id_game_name` text,
+	`riot_id_tagline` text,
+	`summoner_name` text,
+	`summoner_level` integer,
+	PRIMARY KEY(`match_id`, `puuid`),
+	FOREIGN KEY (`match_id`) REFERENCES `matches`(`match_id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `idx_participants_puuid` ON `match_participants` (`puuid`);--> statement-breakpoint
+CREATE INDEX `idx_participants_champion` ON `match_participants` (`champion_id`);--> statement-breakpoint
+CREATE TABLE `match_timelines` (
+	`match_id` text PRIMARY KEY NOT NULL,
+	`raw_json` text NOT NULL,
+	`fetched_at` integer NOT NULL,
+	FOREIGN KEY (`match_id`) REFERENCES `matches`(`match_id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `matches` (
+	`match_id` text PRIMARY KEY NOT NULL,
+	`game_creation` integer NOT NULL,
+	`game_start` integer NOT NULL,
+	`game_end` integer,
+	`game_duration` integer NOT NULL,
+	`game_mode` text NOT NULL,
+	`game_type` text,
+	`queue_id` integer NOT NULL,
+	`game_version` text NOT NULL,
+	`map_id` integer NOT NULL,
+	`platform_id` text NOT NULL,
+	`raw_json` text NOT NULL,
+	`fetched_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `idx_matches_start` ON `matches` (`game_start`);--> statement-breakpoint
+CREATE TABLE `player_mastery` (
+	`puuid` text NOT NULL,
+	`champion_id` integer NOT NULL,
+	`champion_points` integer NOT NULL,
+	`champion_level` integer NOT NULL,
+	`last_play_time` integer,
+	`chest_granted` integer,
+	`tokens_earned` integer,
+	`fetched_at` integer NOT NULL,
+	`raw_json` text,
+	PRIMARY KEY(`puuid`, `champion_id`),
+	FOREIGN KEY (`puuid`) REFERENCES `players`(`puuid`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `idx_mastery_puuid_points` ON `player_mastery` (`puuid`,`champion_points`);--> statement-breakpoint
+CREATE TABLE `player_rank_snapshots` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`puuid` text NOT NULL,
+	`queue_type` text NOT NULL,
+	`tier` text,
+	`rank` text,
+	`league_points` integer,
+	`wins` integer NOT NULL,
+	`losses` integer NOT NULL,
+	`hot_streak` integer,
+	`veteran` integer,
+	`fresh_blood` integer,
+	`inactive` integer,
+	`captured_at` integer NOT NULL,
+	`raw_json` text,
+	FOREIGN KEY (`puuid`) REFERENCES `players`(`puuid`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `idx_rank_snapshots_puuid_time` ON `player_rank_snapshots` (`puuid`,`captured_at`);--> statement-breakpoint
+CREATE TABLE `players` (
+	`puuid` text PRIMARY KEY NOT NULL,
+	`game_name` text NOT NULL,
+	`tag_line` text NOT NULL,
+	`platform` text NOT NULL,
+	`region` text NOT NULL,
+	`display_name` text,
+	`added_at` integer NOT NULL
+);
