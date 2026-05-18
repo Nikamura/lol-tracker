@@ -103,6 +103,7 @@ const Masthead: FC<{ active?: string | undefined }> = ({ active }) => (
         <NavLink href="/leaderboards" label="Leaderboards" active={active === "leaderboards"} />
         <NavLink href="/streaks" label="Streaks" active={active === "streaks"} />
         <NavLink href="/heatmaps" label="Heatmaps" active={active === "heatmaps"} />
+        <NavLink href="/compare" label="Comparisons" active={active === "compare"} />
         <NavLink href="/players" label="Players" active={active === "players"} />
       </nav>
     </div>
