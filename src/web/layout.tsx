@@ -12,6 +12,15 @@ export const Layout: FC<PropsWithChildren<{ title?: string; active?: string }>> 
       <title>{title}</title>
       <link rel="stylesheet" href="/static/app.css" />
       <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+      {/* 100% privacy-first analytics */}
+      <script data-collect-dnt="true" async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+      <noscript>
+        <img
+          src="https://queue.simpleanalyticscdn.com/noscript.gif?collect-dnt=true"
+          alt=""
+          referrerpolicy="no-referrer-when-downgrade"
+        />
+      </noscript>
     </head>
     <body class="min-h-screen bg-background text-foreground">
       <header class="border-b">
