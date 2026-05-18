@@ -31,6 +31,8 @@ import {
   type HeatmapsSince,
 } from "./pages/heatmaps.js";
 import { TimelinePage, TimelineRows } from "./pages/timeline.js";
+import { ComparePage, CompareBody } from "./pages/compare.js";
+import { pavilionData } from "../db/comparison-queries.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_ROOT = path.resolve(here, "..", "..", "public");
@@ -269,6 +271,25 @@ export function createApp(db: DB) {
     return c.render(<HeatmapsPage data={data} filters={filters} />);
   });
 
+  app.get("/compare", (c) => {
+    c.set("active", "compare");
+    c.set("seo", {
+      title: "Comparisons · lol-tracker",
+      description:
+        "Ten head-to-head graphs for the tracked friend group — rank race, lane dominance, vision, objectives, and a daily MVP crown.",
+      path: "/compare",
+    });
+    const filters = parseSinceQueue(c.req.query(), "30d");
+    const data = pavilionData(db, buildSinceQueueOpts(filters));
+    return c.render(<ComparePage data={data} filters={filters} />);
+  });
+
+  app.get("/fragments/compare", (c) => {
+    const filters = parseSinceQueue(c.req.query(), "30d");
+    const data = pavilionData(db, buildSinceQueueOpts(filters));
+    return c.html(<CompareBody data={data} />);
+  });
+
   app.get("/fragments/heatmaps", (c) => {
     const raw = parseSinceQueue(c.req.query(), "90d");
     const data = heatmapData(db, buildSinceQueueOpts(raw));
@@ -296,6 +317,7 @@ export function createApp(db: DB) {
       "/leaderboards",
       "/streaks",
       "/heatmaps",
+      "/compare",
       "/players",
       ...players.map((p) => `/players/${p.puuid}`),
     ];

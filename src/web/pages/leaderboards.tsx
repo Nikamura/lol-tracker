@@ -172,11 +172,19 @@ export const LeaderboardsPage: FC<LeaderboardsPageProps> = ({ data, filters }) =
           Arena unless the queue filter is set to arena.
         </p>
       </div>
-      <div class="hidden md:flex flex-col items-end gap-1">
-        <span class="scoreboard-eyebrow">Categories</span>
-        <span class="font-mono text-foreground text-2xl leading-none">
-          {String(data.categories.length).padStart(2, "0")}
-        </span>
+      <div class="flex flex-col items-end gap-2">
+        <a
+          href="/compare"
+          class="kicker rounded-sm border border-amber-400/40 bg-amber-400/5 px-3 py-2 text-xs tracking-[0.18em] text-amber-300 hover:bg-amber-400/10"
+        >
+          See Comparisons →
+        </a>
+        <div class="hidden md:flex flex-col items-end gap-1">
+          <span class="scoreboard-eyebrow">Categories</span>
+          <span class="font-mono text-foreground text-2xl leading-none">
+            {String(data.categories.length).padStart(2, "0")}
+          </span>
+        </div>
       </div>
     </header>
 

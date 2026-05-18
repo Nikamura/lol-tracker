@@ -245,3 +245,368 @@
 @utility tick-in {
   animation: lol-tick-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* ---------------------------------------------------------------------------
+ * Comparisons page — Art-Deco accents on top of the broadcast theme
+ * ------------------------------------------------------------------------ */
+
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: local("Cinzel");
+}
+
+.gatsby-page {
+  --gatsby-gold: #d4af37;
+  --gatsby-cream: #f4ecd8;
+  --gatsby-ink: #f4ecd8;
+  --gatsby-onyx: rgba(11, 11, 13, 0.55);
+}
+
+.gatsby-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+@media (min-width: 1024px) {
+  .gatsby-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .gatsby-grid > section:nth-child(1),
+  .gatsby-grid > section:nth-child(3) {
+    grid-column: span 2;
+  }
+}
+
+.gatsby-frame {
+  position: relative;
+  padding: 1.25rem 1.25rem 1.5rem;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.04), rgba(11, 11, 13, 0.25));
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.08),
+    0 18px 60px -32px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(212, 175, 55, 0.12);
+}
+.gatsby-frame::before,
+.gatsby-frame::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  pointer-events: none;
+}
+.gatsby-frame::before {
+  top: 6px;
+  left: 6px;
+  border-right: none;
+  border-bottom: none;
+}
+.gatsby-frame::after {
+  bottom: 6px;
+  right: 6px;
+  border-left: none;
+  border-top: none;
+}
+
+.gatsby-frame__head {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+.gatsby-frame__numeral {
+  font-family: "Cinzel", "Playfair Display", Georgia, serif;
+  font-size: 1.5rem;
+  color: var(--gatsby-gold);
+  letter-spacing: 0.08em;
+  min-width: 2rem;
+  text-align: center;
+}
+.gatsby-frame__titles {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.gatsby-frame__kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.65rem;
+  color: rgba(244, 236, 216, 0.6);
+}
+.gatsby-frame__title {
+  font-family: "Cinzel", "Playfair Display", Georgia, serif;
+  font-size: 1.35rem;
+  letter-spacing: 0.05em;
+  color: var(--gatsby-cream);
+  margin: 0;
+}
+.gatsby-sunburst {
+  width: 28px;
+  height: 28px;
+  color: var(--gatsby-gold);
+  opacity: 0.7;
+}
+
+.gatsby-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0 1rem;
+  color: rgba(212, 175, 55, 0.55);
+}
+.gatsby-divider__line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(212, 175, 55, 0.55), transparent);
+}
+.gatsby-divider__diamond {
+  font-size: 0.65rem;
+  color: var(--gatsby-gold);
+}
+
+.gatsby-frame__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.gatsby-chart-frame {
+  position: relative;
+  width: 100%;
+  background: rgba(11, 11, 13, 0.35);
+  border: 1px dashed rgba(212, 175, 55, 0.18);
+  padding: 0.5rem;
+}
+
+/* Caption block — the banter */
+.gatsby-caption {
+  margin: 0;
+  text-align: center;
+  padding: 0.5rem 1rem 0;
+}
+.gatsby-caption__rule {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(212, 175, 55, 0.7);
+  margin-bottom: 0.5rem;
+}
+.gatsby-caption__rule > span:not(.gatsby-caption__diamond) {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(212, 175, 55, 0.4), transparent);
+}
+.gatsby-caption__diamond {
+  font-size: 0.55rem;
+}
+.gatsby-caption__headline {
+  font-family: "Cinzel", "Playfair Display", Georgia, serif;
+  font-size: 1.05rem;
+  color: var(--gatsby-cream);
+  margin: 0 0 0.35rem;
+}
+.gatsby-caption__subtitle {
+  color: rgba(244, 236, 216, 0.7);
+  font-size: 0.8rem;
+  font-style: italic;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Champion affair heatmap */
+.gatsby-heatmap-scroll {
+  overflow-x: auto;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: rgba(11, 11, 13, 0.35);
+}
+.gatsby-heatmap {
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  width: 100%;
+}
+.gatsby-heatmap th,
+.gatsby-heatmap td {
+  padding: 0.35rem 0.45rem;
+  text-align: center;
+  white-space: nowrap;
+  border-right: 1px solid rgba(212, 175, 55, 0.08);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.08);
+}
+.gatsby-heatmap__corner {
+  background: rgba(11, 11, 13, 0.6);
+}
+.gatsby-heatmap__champ {
+  font-family: "Cinzel", "Playfair Display", serif;
+  font-weight: 400;
+  font-size: 0.7rem;
+  color: var(--gatsby-gold);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  padding: 0.4rem 0.25rem;
+  min-width: 1.6rem;
+  vertical-align: bottom;
+  background: rgba(11, 11, 13, 0.5);
+}
+.gatsby-heatmap__row-label {
+  position: sticky;
+  left: 0;
+  background: rgba(11, 11, 13, 0.85);
+  color: var(--gatsby-cream);
+  text-align: left;
+  padding: 0.45rem 0.65rem;
+  font-weight: 500;
+  border-right: 1px solid rgba(212, 175, 55, 0.25);
+}
+.gatsby-heatmap__cell {
+  color: var(--gatsby-cream);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.6rem;
+}
+.gatsby-heatmap__cell--empty {
+  color: rgba(244, 236, 216, 0.18);
+}
+
+/* Pentakill panel */
+.gatsby-pentakill-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+@media (min-width: 768px) {
+  .gatsby-pentakill-grid {
+    grid-template-columns: 280px 1fr;
+  }
+}
+.gatsby-empty-doughnut {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  border: 1px dashed rgba(212, 175, 55, 0.25);
+  color: rgba(244, 236, 216, 0.6);
+}
+.gatsby-multikill-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.gatsby-multikill-table th,
+.gatsby-multikill-table td {
+  padding: 0.4rem 0.6rem;
+  text-align: right;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.12);
+}
+.gatsby-multikill-table th:first-child,
+.gatsby-multikill-table td:first-child {
+  text-align: left;
+}
+.gatsby-multikill-table th {
+  color: var(--gatsby-gold);
+  font-family: "Cinzel", "Playfair Display", serif;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+}
+.gatsby-multikill-table td.gold {
+  color: var(--gatsby-gold);
+  font-weight: 600;
+}
+
+/* Crown list */
+.gatsby-crown-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: rgba(11, 11, 13, 0.35);
+}
+.gatsby-crown-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 1fr;
+  gap: 0.75rem;
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.08);
+  font-size: 0.85rem;
+}
+.gatsby-crown-row:last-child {
+  border-bottom: none;
+}
+.gatsby-crown-row__date {
+  font-family: "JetBrains Mono", monospace;
+  color: rgba(244, 236, 216, 0.55);
+  font-size: 0.78rem;
+}
+.gatsby-crown-row__mvp,
+.gatsby-crown-row__jester {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.gatsby-crown-row__mvp .gold {
+  color: var(--gatsby-gold);
+  font-weight: 600;
+}
+.gatsby-crown-row__jester {
+  color: rgba(226, 118, 124, 0.85);
+}
+.gatsby-crown-row .muted {
+  color: rgba(244, 236, 216, 0.45);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.75rem;
+}
+
+/* Embedded rivalry card on the player profile */
+.gatsby-embed-card {
+  position: relative;
+  padding: 1rem;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.06), rgba(11, 11, 13, 0.25));
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 2px;
+}
+.gatsby-embed-card__title {
+  font-family: "Cinzel", "Playfair Display", serif;
+  font-size: 1rem;
+  color: var(--gatsby-cream);
+  letter-spacing: 0.06em;
+  margin: 0 0 0.5rem;
+}
+.gatsby-embed-card__kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.65rem;
+  color: var(--gatsby-gold);
+  margin: 0 0 0.5rem;
+}
+
+/* Crown banner on the match-history page */
+.gatsby-crown-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.08), rgba(11, 11, 13, 0.3));
+  border-radius: 2px;
+  margin-bottom: 1rem;
+}
+.gatsby-crown-banner__icon {
+  font-size: 1.4rem;
+  color: var(--gatsby-gold);
+}
+.gatsby-crown-banner__title {
+  font-family: "Cinzel", "Playfair Display", serif;
+  color: var(--gatsby-cream);
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+}
+.gatsby-crown-banner__detail {
+  color: rgba(244, 236, 216, 0.65);
+  font-size: 0.8rem;
+  font-style: italic;
+  margin-left: auto;
+}
