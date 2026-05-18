@@ -30,6 +30,9 @@ export const Layout: FC<PropsWithChildren<{ title?: string; active?: string }>> 
           </a>
           <nav class="flex items-center gap-1 text-sm">
             <NavLink href="/" label="Timeline" active={active === "timeline"} />
+            <NavLink href="/leaderboards" label="Leaderboards" active={active === "leaderboards"} />
+            <NavLink href="/streaks" label="Streaks" active={active === "streaks"} />
+            <NavLink href="/heatmaps" label="Heatmaps" active={active === "heatmaps"} />
             <NavLink href="/players" label="Players" active={active === "players"} />
           </nav>
         </div>

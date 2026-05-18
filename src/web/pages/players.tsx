@@ -59,7 +59,14 @@ export const PlayersPage: FC<PlayersProps> = ({ rows }) => (
           <TBody>
             {rows.map(({ player, state, lastPlayedAt }) => (
               <TR>
-                <TD class="font-medium">{player.displayName ?? player.gameName}</TD>
+                <TD class="font-medium">
+                  <a
+                    href={`/players/${player.puuid}`}
+                    class="hover:text-primary hover:underline"
+                  >
+                    {player.displayName ?? player.gameName}
+                  </a>
+                </TD>
                 <TD class="text-muted-foreground tabular-nums">
                   {player.gameName}#{player.tagLine}
                 </TD>
