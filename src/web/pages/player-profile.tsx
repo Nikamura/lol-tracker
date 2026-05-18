@@ -10,7 +10,7 @@ import type {
 import type { TimelineRow } from "../../db/queries.js";
 import { QUEUE_GROUPS } from "../../lib/queues.js";
 import { MatchRow } from "../components/match-row.js";
-import { championIcon, ddragonVersion } from "../lib/ddragon.js";
+import { championIcon, championNameById, ddragonVersion } from "../lib/ddragon.js";
 import { cn } from "../lib/cn.js";
 import {
   Badge,
@@ -425,7 +425,10 @@ const MasteryCard: FC<{ masteries: MasteryStat[]; champNameById: Map<number, str
       <CardContent>
         <ul class="grid grid-cols-2 gap-3 md:grid-cols-5">
           {masteries.map((m) => {
-            const name = champNameById.get(m.championId) ?? `Champion ${m.championId}`;
+            const name =
+              champNameById.get(m.championId) ??
+              championNameById(m.championId) ??
+              `Champion ${m.championId}`;
             return (
               <li class="flex flex-col items-center gap-1.5 rounded-lg border bg-muted/20 p-3">
                 <img
