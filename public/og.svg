@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="lol-tracker — friend-group LoL match archive">
+  <defs>
+    <radialGradient id="mesh" cx="50%" cy="0%" r="70%">
+      <stop offset="0%" stop-color="#1b3a1f" stop-opacity="0.55"/>
+      <stop offset="60%" stop-color="#0a0f1f" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1c2540" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="630" fill="#0a0f1f"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <rect width="1200" height="630" fill="url(#mesh)"/>
+
+  <!-- top eyebrow bar -->
+  <rect x="0" y="0" width="1200" height="56" fill="#0d1326"/>
+  <line x1="0" y1="56" x2="1200" y2="56" stroke="#1c2540" stroke-width="1"/>
+  <circle cx="64" cy="28" r="6" fill="#b6f244"/>
+  <text x="84" y="34" font-family="'JetBrains Mono', 'Courier New', monospace" font-size="16" fill="#cfd2da" letter-spacing="2">LIVE FEED · FRIEND GROUP RANKED TRACKER</text>
+  <text x="1136" y="34" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="16" fill="#7a8198" letter-spacing="2">v0.1 · EU-WEST · KR · NA</text>
+
+  <!-- masthead -->
+  <g font-family="'Bebas Neue', 'Arial Black', Impact, sans-serif" font-weight="700">
+    <text x="80" y="280" font-size="220" fill="#f5f5ea" letter-spacing="2">LOL</text>
+    <text x="430" y="280" font-size="220" fill="#b6f244" letter-spacing="2">/</text>
+    <text x="510" y="280" font-size="220" fill="#f5f5ea" letter-spacing="2">TRACKER</text>
+  </g>
+
+  <text x="82" y="330" font-family="'JetBrains Mono', monospace" font-size="22" fill="#9aa1b6" letter-spacing="6">MATCH ARCHIVE  ·  TACTICAL READOUT</text>
+
+  <!-- divider -->
+  <line x1="80" y1="380" x2="1120" y2="380" stroke="#1c2540" stroke-width="2"/>
+
+  <!-- module strip -->
+  <g font-family="'Bebas Neue', 'Arial Black', Impact, sans-serif" font-size="56" fill="#f5f5ea" letter-spacing="3">
+    <text x="80" y="460">TIMELINE</text>
+    <text x="360" y="460">LEADERBOARDS</text>
+    <text x="780" y="460">STREAKS</text>
+    <text x="1000" y="460">HEATMAPS</text>
+  </g>
+
+  <!-- footer description -->
+  <text x="80" y="560" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="26" fill="#cfd2da">Track League of Legends games played by a friend group.</text>
+  <text x="80" y="595" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="22" fill="#7a8198">Timelines · leaderboards · streaks · play-time heatmaps · per-player profiles</text>
+
+  <!-- right accent slab -->
+  <rect x="1080" y="80" width="40" height="240" fill="#b6f244"/>
+</svg>

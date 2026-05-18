@@ -18,6 +18,7 @@ import { streaksForAll } from "../db/streak-queries.js";
 import { heatmapData } from "../db/heatmap-queries.js";
 import { parseSince, resolveQueueFilter } from "../lib/queues.js";
 import { Layout } from "./layout.js";
+import { resolveBaseUrl, resolveSeo, type PageSeo } from "./seo.js";
 import { MatchTabs, type TabKey } from "./pages/match-tabs.js";
 import { PlayersPage } from "./pages/players.js";
 import { PlayerProfilePage, PlayerProfileBody } from "./pages/player-profile.js";
@@ -34,7 +35,7 @@ import { TimelinePage, TimelineRows } from "./pages/timeline.js";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_ROOT = path.resolve(here, "..", "..", "public");
 
-type Variables = { active?: string };
+type Variables = { active?: string; seo?: PageSeo };
 
 interface TimelineQuery {
   since: string;
@@ -122,15 +123,26 @@ export function createApp(db: DB) {
   app.use(
     "*",
     jsxRenderer(
-      ({ children }, c) => (
-        <Layout active={c.get("active")}>{children}</Layout>
-      ),
+      ({ children }, c) => {
+        const seo = resolveSeo(c.get("seo"), resolveBaseUrl(c.req.url));
+        return (
+          <Layout active={c.get("active")} seo={seo}>
+            {children}
+          </Layout>
+        );
+      },
       { docType: true },
     ),
   );
 
   app.get("/", (c) => {
     c.set("active", "timeline");
+    c.set("seo", {
+      title: "Timeline · lol-tracker",
+      description:
+        "Live match timeline for the tracked friend group — recent League of Legends games grouped into shared parties, with queue and player filters.",
+      path: "/",
+    });
     const query = parseTimelineQuery(c.req.query());
     const parties = queryParties(db, buildTimelineFilter(query));
     const players = listPlayers(db);
@@ -145,6 +157,12 @@ export function createApp(db: DB) {
 
   app.get("/players", (c) => {
     c.set("active", "players");
+    c.set("seo", {
+      title: "Players · lol-tracker",
+      description:
+        "Roster of tracked summoners — ingest state, last-played time, and quick links into each player's profile.",
+      path: "/players",
+    });
     const players = listPlayers(db);
     const lastPlayed = lastPlayedByPuuid(db);
     const rows = players.map((player) => ({
@@ -176,6 +194,14 @@ export function createApp(db: DB) {
     const filters = parseSinceQueue(c.req.query(), "30d");
     const data = getProfileData(db, puuid, buildSinceQueueOpts(filters));
     if (!data) return c.notFound();
+    const display =
+      data.player.displayName ??
+      `${data.player.gameName}#${data.player.tagLine}`;
+    c.set("seo", {
+      title: `${display} · Player profile · lol-tracker`,
+      description: `League of Legends profile for ${display} — current rank, recent matches, role and champion breakdowns.`,
+      path: `/players/${puuid}`,
+    });
     return c.render(<PlayerProfilePage data={data} filters={filters} />);
   });
 
@@ -190,6 +216,12 @@ export function createApp(db: DB) {
 
   app.get("/leaderboards", (c) => {
     c.set("active", "leaderboards");
+    c.set("seo", {
+      title: "Leaderboards · lol-tracker",
+      description:
+        "Friend-group leaderboards across League of Legends — win rate, KDA, damage, vision, gold, and more, filterable by queue and window.",
+      path: "/leaderboards",
+    });
     const filters = parseSinceQueue(c.req.query(), "30d");
     const data = getLeaderboards(db, buildSinceQueueOpts(filters));
     return c.render(<LeaderboardsPage data={data} filters={filters} />);
@@ -203,6 +235,12 @@ export function createApp(db: DB) {
 
   app.get("/streaks", (c) => {
     c.set("active", "streaks");
+    c.set("seo", {
+      title: "Streaks · lol-tracker",
+      description:
+        "Win and loss streaks across the friend group — current, longest, and recent game-by-game streak ledger.",
+      path: "/streaks",
+    });
     const filters = parseSinceQueue(c.req.query(), "30d");
     const data = streaksForAll(db, buildSinceQueueOpts(filters));
     return c.render(<StreaksPage data={data} filters={filters} />);
@@ -216,6 +254,12 @@ export function createApp(db: DB) {
 
   app.get("/heatmaps", (c) => {
     c.set("active", "heatmaps");
+    c.set("seo", {
+      title: "Heatmaps · lol-tracker",
+      description:
+        "When the friend group plays League of Legends — day-of-week × hour heatmaps of game volume and win rate per player.",
+      path: "/heatmaps",
+    });
     const raw = parseSinceQueue(c.req.query(), "90d");
     const filters = {
       since: coerceHeatmapsSince(raw.since),
@@ -231,5 +275,45 @@ export function createApp(db: DB) {
     return c.html(<HeatmapsBody data={data} />);
   });
 
+  app.get("/robots.txt", (c) => {
+    const base = resolveBaseUrl(c.req.url);
+    const body = [
+      "User-agent: *",
+      "Allow: /",
+      "Disallow: /fragments/",
+      base ? `Sitemap: ${base}/sitemap.xml` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    return c.text(body + "\n", 200, { "Content-Type": "text/plain; charset=utf-8" });
+  });
+
+  app.get("/sitemap.xml", (c) => {
+    const base = resolveBaseUrl(c.req.url);
+    const players = listPlayers(db);
+    const paths = [
+      "/",
+      "/leaderboards",
+      "/streaks",
+      "/heatmaps",
+      "/players",
+      ...players.map((p) => `/players/${p.puuid}`),
+    ];
+    const urls = paths
+      .map((p) => `  <url><loc>${escapeXml(base + p)}</loc></url>`)
+      .join("\n");
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+    return c.body(xml, 200, { "Content-Type": "application/xml; charset=utf-8" });
+  });
+
   return app;
+}
+
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }

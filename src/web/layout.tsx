@@ -1,15 +1,49 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
+import type { ResolvedSeo } from "./seo.js";
 
-export const Layout: FC<PropsWithChildren<{ title?: string; active?: string }>> = ({
-  title = "lol-tracker",
+export const Layout: FC<PropsWithChildren<{ active?: string; seo: ResolvedSeo }>> = ({
   active,
+  seo,
   children,
 }) => (
   <html lang="en" class="dark">
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>{title}</title>
+      <title>{seo.title}</title>
+      <meta name="description" content={seo.description} />
+      {seo.canonical ? <link rel="canonical" href={seo.canonical} /> : null}
+      <meta
+        name="robots"
+        content={seo.noindex ? "noindex,nofollow" : "index,follow"}
+      />
+      <meta name="theme-color" content="#0a0f1f" media="(prefers-color-scheme: dark)" />
+      <meta name="theme-color" content="#fafaf6" media="(prefers-color-scheme: light)" />
+      <meta name="color-scheme" content="dark light" />
+
+      {/* Open Graph */}
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content={seo.siteName} />
+      <meta property="og:title" content={seo.title} />
+      <meta property="og:description" content={seo.description} />
+      {seo.canonical ? <meta property="og:url" content={seo.canonical} /> : null}
+      <meta property="og:image" content={seo.ogImage} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:image:alt" content={`${seo.siteName} — ${seo.description}`} />
+      <meta property="og:locale" content="en_US" />
+
+      {/* Twitter / X */}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={seo.title} />
+      <meta name="twitter:description" content={seo.description} />
+      <meta name="twitter:image" content={seo.ogImage} />
+      {seo.twitterHandle ? <meta name="twitter:site" content={seo.twitterHandle} /> : null}
+
+      <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+      <link rel="alternate icon" href="/static/favicon.svg" />
+      <link rel="apple-touch-icon" href="/static/favicon.svg" />
+
       <link rel="stylesheet" href="/static/app.css" />
       <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
       {/* 100% privacy-first analytics */}
