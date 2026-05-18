@@ -57,7 +57,7 @@ function cellStyle(cell: Cell, maxGames: number): string {
   const hue = Math.round(wr * 120);
   const ratio = maxGames > 0 ? cell.games / maxGames : 0;
   const alpha = 0.15 + 0.85 * ratio;
-  return `background-color: hsl(${hue}, 65%, 45% / ${alpha.toFixed(3)})`;
+  return `background-color: hsl(${hue} 65% 45% / ${alpha.toFixed(3)})`;
 }
 
 function tooltip(dayIdx: number, hour: number, games: number, wins: number): string {
