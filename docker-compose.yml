@@ -5,6 +5,11 @@ services:
     environment:
       RIOT_API_KEY: ${RIOT_API_KEY:?set RIOT_API_KEY in .env}
       LOL_TRACKER_DB: /data/lol-tracker.db
+      PORT: ${PORT:-5173}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-600}
+      BACKFILL_DAYS: ${BACKFILL_DAYS:-7}
+    ports:
+      - "${PORT:-5173}:5173"
     volumes:
       - ./data:/data
-    restart: "no"
+    restart: unless-stopped

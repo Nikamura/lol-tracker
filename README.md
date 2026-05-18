@@ -37,8 +37,10 @@ Dev-key rate limits: 20 req/s · 100 req / 2 min. The client honours both with a
 | | |
 |-|-|
 | `add <gameName#tagLine> --platform <p> [--name <n>]` | Resolve a Riot ID to a PUUID and start tracking. |
+| `remove <gameName#tagLine> [--purge-matches] [--yes]` | Stop tracking a player and cascade-delete their unique data (rank snapshots, mastery, ingest cursor). |
 | `list` | Show tracked players and when each was last polled. |
 | `poll [--backfill-days 7] [--skip-timelines] [--skip-rank] [--skip-mastery] [--mastery-stale-hours 24] [--verbose]` | Incremental fetch for all tracked players. |
+| `serve [--port 5173] [--poll-interval 600] [--backfill-days 7] [--skip-initial-poll]` | Run the web UI **and** auto-poll on an interval. Container default. |
 | `timeline [--since 7d] [--player <n>] [--queue <q>] [--limit 100]` | Chronological feed across everyone. |
 
 `--platform` is the Riot platform code: `euw1`, `eun1`, `na1`, `kr`, `jp1`, `oc1`, `br1`, `la1`, `la2`, `tr1`, `ru`, `ph2`, `sg2`, `th2`, `tw2`, `vn2`.
@@ -118,20 +120,27 @@ A small read-only browser UI built with **Hono + HTMX** and Tailwind v4. Server-
 
 ```bash
 pnpm dev:web      # tsx watch + tailwind --watch in parallel; serves http://localhost:5173
-pnpm web          # one-shot (assumes public/app.css is already built)
+pnpm web          # one-shot web-only (assumes public/app.css is already built)
+pnpm dev serve    # web + recurring auto-poll in one process (what the container runs)
 pnpm web:css      # build the stylesheet
 ```
 
 Pages:
 
-- `/` — chronological timeline with HTMX-driven filters (since / queue / player / limit). The filter form posts to `/fragments/timeline`, which returns an HTML table fragment swapped into the page.
+- `/` — party-grouped timeline (solo matches and stacks rendered side-by-side, grouped by team) with HTMX-driven filters (since / queue / player / limit). The filter form posts to `/fragments/timeline`, which returns an HTML fragment swapped into the page.
 - `/players` — tracked players with last-poll and last-match timestamps.
+- `/fragments/match/:matchId[/stats|/timeline|/gold]` — htmx-loaded match-detail tabs (Overview, Stats, Timeline, Gold Graph) expanded from a row.
+
+Match detail also computes a 0–100 **performance score** per participant — global #1 gets the `MVP` badge, lowest score on each team gets `COOKED`. Tracked players show their solo-queue rank inline.
 
 The visual style mirrors shadcn/ui (semantic Tailwind tokens, Card + Table + Badge patterns), but components are hand-rolled JSX under `src/web/components/ui.tsx` so they render in Hono's JSX runtime instead of React.
 
 ## Homelab deploy
 
-Containerised; runs as a one-shot `docker compose run` on a systemd timer.
+The container's default command is `serve`: it boots the web UI on port `5173`
+and auto-polls Riot every `POLL_INTERVAL_SECONDS` (default 600 = 10 min) in the
+same process. No host-side cron, systemd timers, or scheduled `docker run`
+needed — bring the stack up and leave it.
 
 ```bash
 # On the homelab box (assumes Docker + compose plugin)
@@ -140,20 +149,34 @@ sudo rsync -a ./ /opt/lol-tracker/      # or git clone
 cd /opt/lol-tracker
 echo "RIOT_API_KEY=RGAPI-..." | sudo tee .env
 
-sudo docker compose build
-sudo docker compose run --rm lol-tracker add "Faker#KR1" --platform kr --name Faker
+sudo docker compose up -d --build
 
-# Wire the systemd timer
-sudo cp deploy/lol-tracker-poll.service /etc/systemd/system/
-sudo cp deploy/lol-tracker-poll.timer   /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now lol-tracker-poll.timer
+# Add players (one-shot 'docker compose exec' against the running container)
+sudo docker compose exec lol-tracker node dist/cli.js add "Faker#KR1" --platform kr --name Faker
 
-# Check what's been seen
-sudo docker compose run --rm lol-tracker timeline --since 24h
+# Watch what's happening
+sudo docker compose logs -f lol-tracker
+
+# UI is on http://<host>:5173
 ```
 
-Database lives in `./data/` on the host (bind-mounted to `/data` in the container) so backups are just an rsync of that directory.
+Environment knobs (set in `.env` or `docker-compose.yml`):
+
+| Var | Default | Purpose |
+|-|-|-|
+| `RIOT_API_KEY` | *(required)* | Riot personal/dev key |
+| `PORT` | `5173` | HTTP port the container listens on |
+| `POLL_INTERVAL_SECONDS` | `600` | Poll cadence. Set to `0` to disable auto-poll. |
+| `BACKFILL_DAYS` | `7` | History window for newly added players |
+| `LOL_TRACKER_DB` | `/data/lol-tracker.db` | DB path inside the container |
+
+Database lives in `./data/` on the host (bind-mounted to `/data` in the container)
+so backups are just an rsync of that directory. `restart: unless-stopped` keeps
+the container alive across reboots.
+
+The image still exposes the full CLI — useful for one-shot ops like adding
+players, running an immediate poll, or pulling a timeline from inside the
+container: `docker compose exec lol-tracker node dist/cli.js <subcommand>`.
 
 ## Roadmap (v2)
 
