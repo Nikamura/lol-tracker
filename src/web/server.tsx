@@ -32,7 +32,7 @@ import {
 } from "./pages/heatmaps.js";
 import { TimelinePage, TimelineRows } from "./pages/timeline.js";
 import { ComparePage, CompareBody } from "./pages/compare.js";
-import { pavilionData } from "../db/comparison-queries.js";
+import { listComparePlayers, pavilionData } from "../db/comparison-queries.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_ROOT = path.resolve(here, "..", "..", "public");
@@ -280,14 +280,20 @@ export function createApp(db: DB) {
         "Fifteen head-to-head graphs for the tracked friend group, ranked-only by default — rank race, lane dominance, vision, objectives, damage profile, first bloods, surrender stats, and a daily MVP crown.",
       path: "/compare",
     });
-    const filters = parseSinceQueue(c.req.query(), "30d", "ranked");
-    const data = pavilionData(db, buildSinceQueueOpts(filters));
-    return c.render(<ComparePage data={data} filters={filters} />);
+    const sq = parseSinceQueue(c.req.query(), "30d", "ranked");
+    const excludedPuuids = c.req.queries("exclude") ?? [];
+    const filters = { ...sq, excludedPuuids };
+    const allPlayers = listComparePlayers(db);
+    const opts = { ...buildSinceQueueOpts(sq), excludedPuuids };
+    const data = pavilionData(db, opts);
+    return c.render(<ComparePage data={data} filters={filters} allPlayers={allPlayers} />);
   });
 
   app.get("/fragments/compare", (c) => {
-    const filters = parseSinceQueue(c.req.query(), "30d", "ranked");
-    const data = pavilionData(db, buildSinceQueueOpts(filters));
+    const sq = parseSinceQueue(c.req.query(), "30d", "ranked");
+    const excludedPuuids = c.req.queries("exclude") ?? [];
+    const opts = { ...buildSinceQueueOpts(sq), excludedPuuids };
+    const data = pavilionData(db, opts);
     return c.html(<CompareBody data={data} />);
   });
 

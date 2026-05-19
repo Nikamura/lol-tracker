@@ -10,6 +10,7 @@ import type {
   MultiKillRow,
   ObjectiveRow,
   PavilionData,
+  PlayerLite,
   RadarData,
   RankRaceData,
   ScatterSeries,
@@ -42,6 +43,7 @@ import { Card, CardContent, Empty, Label, Select } from "../components/ui.js";
 export interface CompareFilters {
   since: string;
   queue: string;
+  excludedPuuids: string[];
 }
 
 const SINCE_OPTIONS = [
@@ -693,7 +695,60 @@ const WeekdayPanel: FC<{ rows: WeekdayRow[] }> = ({ rows }) => {
 export interface ComparePageProps {
   data: PavilionData;
   filters: CompareFilters;
+  allPlayers: PlayerLite[];
 }
+
+const PlayerToggles: FC<{ players: PlayerLite[]; excludedPuuids: string[] }> = ({
+  players,
+  excludedPuuids,
+}) => {
+  const excludedSet = new Set(excludedPuuids);
+  const includedCount = players.length - excludedSet.size;
+  return (
+    <div class="flex flex-col gap-2 border-t border-border/40 pt-4">
+      <div class="flex items-baseline justify-between gap-2">
+        <Label>Players in mix</Label>
+        <span class="scoreboard-eyebrow">
+          {includedCount}/{players.length} active
+        </span>
+      </div>
+      <div class="flex flex-wrap gap-1.5">
+        {players.map((p) => {
+          const excluded = excludedSet.has(p.puuid);
+          return (
+            <label
+              class="group cursor-pointer select-none"
+              title={excluded ? `Include ${p.displayName}` : `Exclude ${p.displayName}`}
+            >
+              <input
+                type="checkbox"
+                name="exclude"
+                value={p.puuid}
+                checked={excluded}
+                aria-label={`Exclude ${p.displayName} from comparisons`}
+                class="peer sr-only"
+              />
+              <span
+                class="
+                  inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium
+                  border-border/70 bg-card text-foreground
+                  transition-colors duration-150
+                  hover:bg-accent hover:text-accent-foreground hover:border-border
+                  peer-checked:border-dashed peer-checked:border-border/40 peer-checked:bg-transparent
+                  peer-checked:text-muted-foreground/60 peer-checked:line-through
+                  peer-focus-visible:ring-1 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-1
+                  peer-focus-visible:ring-offset-background
+                "
+              >
+                {p.displayName}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 export const CompareBody: FC<{ data: PavilionData }> = ({ data }) => (
   <div class="gatsby-grid">
@@ -759,7 +814,7 @@ export const CompareBody: FC<{ data: PavilionData }> = ({ data }) => (
   </div>
 );
 
-export const ComparePage: FC<ComparePageProps> = ({ data, filters }) => (
+export const ComparePage: FC<ComparePageProps> = ({ data, filters, allPlayers }) => (
   <div class="gatsby-page flex flex-col gap-6 pt-8">
     <header class="flex items-end justify-between gap-4 border-b border-border/40 pb-4">
       <div class="flex flex-col gap-1">
@@ -778,41 +833,46 @@ export const ComparePage: FC<ComparePageProps> = ({ data, filters }) => (
     <Card>
       <CardContent>
         <form
-          class="grid grid-cols-1 gap-4 md:grid-cols-3"
+          class="flex flex-col gap-4"
           hx-get="/fragments/compare"
           hx-target="#compare-body"
           hx-trigger="change"
           hx-push-url="true"
           hx-indicator="#compare-spinner"
         >
-          <div class="flex flex-col gap-1.5">
-            <Label for="since">Since</Label>
-            <Select id="since" name="since">
-              {SINCE_OPTIONS.map((opt) => (
-                <option value={opt.value} selected={opt.value === filters.since}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div class="flex flex-col gap-1.5">
+              <Label for="since">Since</Label>
+              <Select id="since" name="since">
+                {SINCE_OPTIONS.map((opt) => (
+                  <option value={opt.value} selected={opt.value === filters.since}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <Label for="queue">Queue</Label>
+              <Select id="queue" name="queue">
+                {QUEUE_OPTIONS.map((opt) => (
+                  <option value={opt.value} selected={opt.value === filters.queue}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div class="flex items-end">
+              <span
+                id="compare-spinner"
+                class="htmx-indicator text-sm text-muted-foreground"
+              >
+                Loading…
+              </span>
+            </div>
           </div>
-          <div class="flex flex-col gap-1.5">
-            <Label for="queue">Queue</Label>
-            <Select id="queue" name="queue">
-              {QUEUE_OPTIONS.map((opt) => (
-                <option value={opt.value} selected={opt.value === filters.queue}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div class="flex items-end">
-            <span
-              id="compare-spinner"
-              class="htmx-indicator text-sm text-muted-foreground"
-            >
-              Loading…
-            </span>
-          </div>
+          {allPlayers.length > 0 ? (
+            <PlayerToggles players={allPlayers} excludedPuuids={filters.excludedPuuids} />
+          ) : null}
         </form>
       </CardContent>
     </Card>
