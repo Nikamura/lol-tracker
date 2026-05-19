@@ -52,10 +52,6 @@ function kdaRatio(row: TimelineRow): string {
   return ((row.kills + row.assists) / row.deaths).toFixed(2);
 }
 
-export function isRemake(row: TimelineRow): boolean {
-  return Boolean(row.teamEarlySurrendered) && row.gameDuration < 300;
-}
-
 function deriveBadges(row: TimelineRow): Array<{ label: string; variant: "secondary" | "outline" | "destructive" | "success" }> {
   const out: Array<{ label: string; variant: "secondary" | "outline" | "destructive" | "success" }> = [];
   if ((row.pentaKills ?? 0) > 0) out.push({ label: "Pentakill", variant: "success" });
@@ -63,16 +59,14 @@ function deriveBadges(row: TimelineRow): Array<{ label: string; variant: "second
   else if ((row.tripleKills ?? 0) > 0) out.push({ label: "Triple Kill", variant: "secondary" });
   else if ((row.doubleKills ?? 0) > 0) out.push({ label: "Double Kill", variant: "outline" });
   if (row.firstBloodKill) out.push({ label: "First Blood", variant: "outline" });
-  if (isRemake(row)) return out;
   if (row.teamEarlySurrendered) out.push({ label: "Early FF", variant: "destructive" });
   else if (row.gameEndedInSurrender) out.push({ label: "Surrender", variant: "outline" });
   return out;
 }
 
-const RAIL: Record<"win" | "loss" | "remake", string> = {
+const RAIL: Record<"win" | "loss", string> = {
   win: "before:bg-success/70 bg-gradient-to-r from-success/[0.08] via-card to-card",
   loss: "before:bg-destructive/80 bg-gradient-to-r from-destructive/[0.08] via-card to-card",
-  remake: "before:bg-muted-foreground/40 bg-card",
 };
 
 const POSITION_LABEL: Record<string, string> = {
@@ -102,8 +96,7 @@ export interface MatchRowProps {
 
 export const MatchRow: FC<MatchRowProps> = ({ row, showPlayer = true, embedded = false }) => {
   const ver = ddragonVersion(row.gameVersion);
-  const remake = isRemake(row);
-  const outcome: "win" | "loss" | "remake" = remake ? "remake" : row.win ? "win" : "loss";
+  const outcome: "win" | "loss" = row.win ? "win" : "loss";
   const badges = deriveBadges(row);
   const items = [row.item0, row.item1, row.item2, row.item3, row.item4, row.item5];
   const trinket = row.item6;
@@ -121,7 +114,6 @@ export const MatchRow: FC<MatchRowProps> = ({ row, showPlayer = true, embedded =
         "group relative overflow-hidden rounded-xl border",
         "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:content-['']",
         RAIL[outcome],
-        !embedded && remake && "opacity-70",
       )}
     >
       <div class={cn("grid items-center gap-5 px-5 py-4 max-md:grid-cols-1", gridCols)}>
@@ -319,7 +311,7 @@ const ItemCell: FC<{ version: string; id: number | null }> = ({ version, id }) =
   );
 };
 
-const OutcomeCluster: FC<{ outcome: "win" | "loss" | "remake"; queue: string; when: string; duration: string }> = ({
+const OutcomeCluster: FC<{ outcome: "win" | "loss"; queue: string; when: string; duration: string }> = ({
   outcome,
   queue,
   when,
@@ -329,14 +321,10 @@ const OutcomeCluster: FC<{ outcome: "win" | "loss" | "remake"; queue: string; wh
     <span
       class={cn(
         "text-base font-semibold tracking-tight",
-        outcome === "win"
-          ? "text-success"
-          : outcome === "loss"
-            ? "text-destructive"
-            : "text-muted-foreground",
+        outcome === "win" ? "text-success" : "text-destructive",
       )}
     >
-      {outcome === "win" ? "Victory" : outcome === "loss" ? "Defeat" : "Remake"}
+      {outcome === "win" ? "Victory" : "Defeat"}
     </span>
     <span class="text-muted-foreground text-xs">{queue}</span>
     <span class="text-muted-foreground/80 font-mono text-[11px]">

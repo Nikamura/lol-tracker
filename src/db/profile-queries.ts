@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import type { DB } from "./connect.js";
+import { notRemakeCond } from "./match-filters.js";
 import {
   matchParticipants,
   matches,
@@ -248,7 +249,7 @@ function getHeadline(
   puuid: string,
   opts: ProfileQueryOpts,
 ): ProfileHeadline {
-  const conds = [eq(matchParticipants.puuid, puuid)];
+  const conds = [eq(matchParticipants.puuid, puuid), notRemakeCond()];
   if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
   if (opts.queueIds?.length) conds.push(inArray(matches.queueId, opts.queueIds));
 
@@ -303,7 +304,7 @@ function getRoleStats(
   puuid: string,
   opts: ProfileQueryOpts,
 ): RoleStat[] {
-  const conds = [eq(matchParticipants.puuid, puuid)];
+  const conds = [eq(matchParticipants.puuid, puuid), notRemakeCond()];
   if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
   if (opts.queueIds?.length) conds.push(inArray(matches.queueId, opts.queueIds));
 
@@ -339,7 +340,7 @@ function getChampionStats(
   opts: ProfileQueryOpts,
   limit: number,
 ): ChampionStat[] {
-  const conds = [eq(matchParticipants.puuid, puuid)];
+  const conds = [eq(matchParticipants.puuid, puuid), notRemakeCond()];
   if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
   if (opts.queueIds?.length) conds.push(inArray(matches.queueId, opts.queueIds));
 
@@ -404,7 +405,7 @@ function getRecentMatches(
   opts: ProfileQueryOpts,
   limit: number,
 ): ProfileRecentMatch[] {
-  const conds = [eq(matchParticipants.puuid, puuid)];
+  const conds = [eq(matchParticipants.puuid, puuid), notRemakeCond()];
   if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
   if (opts.queueIds?.length) conds.push(inArray(matches.queueId, opts.queueIds));
 
@@ -461,7 +462,7 @@ function getLatestGameVersion(
   puuid: string,
   opts: ProfileQueryOpts,
 ): string | undefined {
-  const conds = [eq(matchParticipants.puuid, puuid)];
+  const conds = [eq(matchParticipants.puuid, puuid), notRemakeCond()];
   if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
   if (opts.queueIds?.length) conds.push(inArray(matches.queueId, opts.queueIds));
 
@@ -483,7 +484,7 @@ function getLatestGameVersion(
     .select({ gameVersion: matches.gameVersion })
     .from(matchParticipants)
     .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
-    .where(eq(matchParticipants.puuid, puuid))
+    .where(and(eq(matchParticipants.puuid, puuid), notRemakeCond()))
     .orderBy(desc(matches.gameStart))
     .limit(1)
     .get();

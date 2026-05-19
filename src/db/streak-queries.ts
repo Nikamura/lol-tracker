@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
 import type { DB } from "./connect.js";
+import { notRemakeCond } from "./match-filters.js";
 import { matchParticipants, matches, players } from "./schema.js";
 
 export interface StreakCurrent {
@@ -129,7 +130,7 @@ export function streaksForAll(db: DB, opts: StreaksOptions = {}): StreaksData {
 
   const puuids = trackedPlayers.map((p) => p.puuid);
 
-  const conds = [inArray(matchParticipants.puuid, puuids)];
+  const conds = [inArray(matchParticipants.puuid, puuids), notRemakeCond()];
   if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
   if (opts.queueIds?.length) conds.push(inArray(matches.queueId, opts.queueIds));
 

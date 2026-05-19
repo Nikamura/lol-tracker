@@ -7,6 +7,7 @@ import type {
   MatchTimeline,
 } from "../riot/types.js";
 import type { DB } from "./connect.js";
+import { notRemakeCond } from "./match-filters.js";
 import {
   ingestState,
   matchParticipants,
@@ -116,6 +117,7 @@ export function lastPlayedByPuuid(db: DB): Map<string, number> {
     })
     .from(matchParticipants)
     .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
+    .where(notRemakeCond())
     .groupBy(matchParticipants.puuid)
     .all();
   return new Map(rows.map((r) => [r.puuid, r.lastPlayed]));
@@ -637,7 +639,7 @@ export function queryMatchDetail(db: DB, matchId: string): MatchDetail | undefin
 }
 
 export function queryTimeline(db: DB, f: TimelineFilter = {}): TimelineRow[] {
-  const conds: SQL[] = [];
+  const conds: SQL[] = [notRemakeCond()];
   if (f.sinceMs !== undefined) conds.push(gte(matches.gameStart, f.sinceMs));
   if (f.puuids?.length) conds.push(inArray(matchParticipants.puuid, f.puuids));
   if (f.queueIds?.length) conds.push(inArray(matches.queueId, f.queueIds));
