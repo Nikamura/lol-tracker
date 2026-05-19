@@ -10,6 +10,7 @@ import {
 import { rankToScalar } from "./profile-queries.js";
 
 const SOLO_QUEUE = "RANKED_SOLO_5x5";
+const FLEX_QUEUE = "RANKED_FLEX_SR";
 
 export interface ComparisonOptions {
   sinceMs?: number | undefined;
@@ -73,7 +74,11 @@ export interface RankRaceData {
   domain: [number, number] | null;
 }
 
-export function rankRace(db: DB, opts: ComparisonOptions = {}): RankRaceData {
+export function rankRace(
+  db: DB,
+  opts: ComparisonOptions = {},
+  queueType: string = SOLO_QUEUE,
+): RankRaceData {
   const playerList = readPlayers(db, opts.excludedPuuids);
   const series: RankRaceSeries[] = [];
   let lo = Infinity;
@@ -81,7 +86,7 @@ export function rankRace(db: DB, opts: ComparisonOptions = {}): RankRaceData {
   for (const p of playerList) {
     const conds = [
       eq(playerRankSnapshots.puuid, p.puuid),
-      eq(playerRankSnapshots.queueType, SOLO_QUEUE),
+      eq(playerRankSnapshots.queueType, queueType),
     ];
     if (opts.sinceMs !== undefined) conds.push(gte(playerRankSnapshots.capturedAt, opts.sinceMs));
     const rows = db
@@ -1135,6 +1140,7 @@ export function dayOfWeek(db: DB, opts: ComparisonOptions = {}): WeekdayRow[] {
 
 export interface PavilionData {
   rankRace: RankRaceData;
+  rankRaceFlex: RankRaceData;
   radar: RadarData;
   champions: ChampionAffairData;
   lanes: LaneRow[];
@@ -1153,7 +1159,8 @@ export interface PavilionData {
 
 export function pavilionData(db: DB, opts: ComparisonOptions = {}): PavilionData {
   return {
-    rankRace: rankRace(db, opts),
+    rankRace: rankRace(db, opts, SOLO_QUEUE),
+    rankRaceFlex: rankRace(db, opts, FLEX_QUEUE),
     radar: radarCompare(db, opts),
     champions: championAffair(db, opts),
     lanes: laneDominance(db, opts),
