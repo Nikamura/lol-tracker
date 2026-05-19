@@ -294,6 +294,9 @@ export function createApp(db: DB) {
     const excludedPuuids = c.req.queries("exclude") ?? [];
     const opts = { ...buildSinceQueueOpts(sq), excludedPuuids };
     const data = pavilionData(db, opts);
+    // hx-push-url="true" on the form would otherwise push /fragments/compare
+    // into the address bar; refreshing that returns only the body fragment.
+    c.header("HX-Push-Url", "/compare" + new URL(c.req.url).search);
     return c.html(<CompareBody data={data} />);
   });
 
