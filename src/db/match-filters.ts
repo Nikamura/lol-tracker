@@ -1,17 +1,18 @@
 import { sql } from "drizzle-orm";
-import { matchParticipants, matches } from "./schema.js";
+import { matches } from "./schema.js";
 
 /**
- * Remake = the game ended via the early-surrender mechanism (disconnect in the
- * first ~4 minutes) and lasted under 5 minutes. Both flags are OR'd because
- * `team_early_surrendered` is only set on the surrendering team's participants
- * while `game_ended_in_early_surrender` is set on all 10 — either tells us the
- * match was a remake.
+ * Remake = a game that ended via the early-surrender mechanism (one team DCs in
+ * the first ~4 minutes). Riot reports those with `gameDuration` under 5 minutes;
+ * no real Summoner's Rift / ARAM / Arena game finishes that fast, so a pure
+ * duration threshold is enough — and it stays correct even when the per-
+ * participant `gameEndedInEarlySurrender` / `teamEarlySurrendered` flags are
+ * missing on rows that were ingested before those columns were populated
+ * reliably (migration 0001 backfills them from `matches.raw_json`, but the
+ * predicate must work regardless).
  *
  * Apply via `.where(notRemakeCond())` (or AND it with existing conds) on every
- * query that joins matches × match_participants for stats, leaderboards,
- * streaks, comparisons, timelines or heatmaps. Remakes stay in the DB but are
- * never surfaced.
+ * query that joins `matches` for stats, leaderboards, streaks, comparisons,
+ * timelines or heatmaps. Remakes stay in the DB but are never surfaced.
  */
-export const notRemakeCond = () =>
-  sql`NOT ((COALESCE(${matchParticipants.gameEndedInEarlySurrender}, 0) = 1 OR COALESCE(${matchParticipants.teamEarlySurrendered}, 0) = 1) AND ${matches.gameDuration} < 300)`;
+export const notRemakeCond = () => sql`${matches.gameDuration} >= 300`;
