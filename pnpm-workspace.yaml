@@ -1,0 +1,6 @@
+# 48h cooldown before any newly-published version can enter the lockfile.
+# Defense-in-depth against supply-chain attacks: malicious packages are usually
+# detected and yanked within a day or two of publish. Enforced by pnpm at
+# resolution time — `pnpm install` will refuse to pick a version younger than
+# this. (Installs from an already-resolved lockfile aren't re-checked.)
+minimumReleaseAge: 2880
