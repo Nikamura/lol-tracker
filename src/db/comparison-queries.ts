@@ -14,6 +14,7 @@ const SOLO_QUEUE = "RANKED_SOLO_5x5";
 export interface ComparisonOptions {
   sinceMs?: number | undefined;
   queueIds?: number[] | undefined;
+  excludedPuuids?: string[] | undefined;
 }
 
 export interface PlayerLite {
@@ -21,8 +22,9 @@ export interface PlayerLite {
   displayName: string;
 }
 
-function readPlayers(db: DB): PlayerLite[] {
-  return db
+function readPlayers(db: DB, excludedPuuids?: string[]): PlayerLite[] {
+  const excluded = excludedPuuids?.length ? new Set(excludedPuuids) : null;
+  const rows = db
     .select({
       puuid: players.puuid,
       displayName: players.displayName,
@@ -34,6 +36,12 @@ function readPlayers(db: DB): PlayerLite[] {
       puuid: p.puuid,
       displayName: p.displayName ?? p.gameName,
     }));
+  return excluded ? rows.filter((p) => !excluded.has(p.puuid)) : rows;
+}
+
+/** Full unfiltered roster — used by the page UI to render exclusion toggles. */
+export function listComparePlayers(db: DB): PlayerLite[] {
+  return readPlayers(db);
 }
 
 function commonConds(opts: ComparisonOptions) {
@@ -65,8 +73,8 @@ export interface RankRaceData {
   domain: [number, number] | null;
 }
 
-export function rankRace(db: DB, sinceMs?: number): RankRaceData {
-  const playerList = readPlayers(db);
+export function rankRace(db: DB, opts: ComparisonOptions = {}): RankRaceData {
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const series: RankRaceSeries[] = [];
   let lo = Infinity;
   let hi = -Infinity;
@@ -75,7 +83,7 @@ export function rankRace(db: DB, sinceMs?: number): RankRaceData {
       eq(playerRankSnapshots.puuid, p.puuid),
       eq(playerRankSnapshots.queueType, SOLO_QUEUE),
     ];
-    if (sinceMs !== undefined) conds.push(gte(playerRankSnapshots.capturedAt, sinceMs));
+    if (opts.sinceMs !== undefined) conds.push(gte(playerRankSnapshots.capturedAt, opts.sinceMs));
     const rows = db
       .select({
         capturedAt: playerRankSnapshots.capturedAt,
@@ -243,7 +251,7 @@ export function radarCompare(
   opts: ComparisonOptions = {},
   puuids?: string[],
 ): RadarData {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const targetPuuids = puuids && puuids.length > 0 ? puuids : playerList.map((p) => p.puuid);
   const aggs = radarAggForPuuids(db, opts, targetPuuids);
   const nameMap = new Map(playerList.map((p) => [p.puuid, p.displayName]));
@@ -291,7 +299,7 @@ export function championAffair(
   opts: ComparisonOptions = {},
   topN = 20,
 ): ChampionAffairData {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const conds = [
     ...commonConds(opts),
     inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
@@ -349,7 +357,7 @@ export interface LaneRow {
 }
 
 export function laneDominance(db: DB, opts: ComparisonOptions = {}): LaneRow[] {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const conds = [
     ...commonConds(opts),
     inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
@@ -411,7 +419,7 @@ export function goldGatsbyCurve(
   db: DB,
   opts: ComparisonOptions = {},
 ): ScatterSeries[] {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const conds = [
     ...commonConds(opts),
     inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
@@ -469,7 +477,7 @@ export function visionSociety(
   db: DB,
   opts: ComparisonOptions = {},
 ): VisionRow[] {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const conds = [
     ...commonConds(opts),
     inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
@@ -524,7 +532,7 @@ export function pentakillPageant(
   db: DB,
   opts: ComparisonOptions = {},
 ): MultiKillRow[] {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const conds = [
     ...commonConds(opts),
     inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
@@ -568,7 +576,7 @@ export interface HourlySeries {
 }
 
 export function witchingHour(db: DB, opts: ComparisonOptions = {}): HourlySeries[] {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const conds = [
     ...commonConds(opts),
     inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
@@ -624,7 +632,7 @@ export function objectiveOrchestra(
   db: DB,
   opts: ComparisonOptions = {},
 ): ObjectiveRow[] {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const conds = [
     ...commonConds(opts),
     inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
@@ -719,7 +727,7 @@ export function crownOfTheEvening(
   opts: ComparisonOptions = {},
   limitDays = 14,
 ): CrownEntry[] {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const nameMap = new Map(playerList.map((p) => [p.puuid, p.displayName]));
   const trackedSet = new Set(playerList.map((p) => p.puuid));
   const conds = [
@@ -850,7 +858,7 @@ export function damageProfile(
   db: DB,
   opts: ComparisonOptions = {},
 ): DamageProfileRow[] {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const conds = [
     ...commonConds(opts),
     inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
@@ -907,7 +915,7 @@ export function firstBloodBrigade(
   db: DB,
   opts: ComparisonOptions = {},
 ): FirstBloodRow[] {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const conds = [
     ...commonConds(opts),
     inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
@@ -968,7 +976,7 @@ export function surrenderSociety(
   db: DB,
   opts: ComparisonOptions = {},
 ): SurrenderRow[] {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const conds = [
     ...commonConds(opts),
     inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
@@ -1027,7 +1035,7 @@ export function durationDevils(
   db: DB,
   opts: ComparisonOptions = {},
 ): DurationRow[] {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const conds = [
     ...commonConds(opts),
     inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
@@ -1083,7 +1091,7 @@ export interface WeekdayRow {
 }
 
 export function dayOfWeek(db: DB, opts: ComparisonOptions = {}): WeekdayRow[] {
-  const playerList = readPlayers(db);
+  const playerList = readPlayers(db, opts.excludedPuuids);
   const conds = [
     ...commonConds(opts),
     inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
@@ -1145,7 +1153,7 @@ export interface PavilionData {
 
 export function pavilionData(db: DB, opts: ComparisonOptions = {}): PavilionData {
   return {
-    rankRace: rankRace(db, opts.sinceMs),
+    rankRace: rankRace(db, opts),
     radar: radarCompare(db, opts),
     champions: championAffair(db, opts),
     lanes: laneDominance(db, opts),
