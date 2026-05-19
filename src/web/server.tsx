@@ -79,10 +79,11 @@ interface SinceQueueFilters {
 function parseSinceQueue(
   raw: Record<string, string | undefined>,
   defaultSince: string,
+  defaultQueue: string = "all",
 ): SinceQueueFilters {
   return {
     since: raw.since ?? defaultSince,
-    queue: raw.queue ?? "all",
+    queue: raw.queue ?? defaultQueue,
   };
 }
 
@@ -276,16 +277,16 @@ export function createApp(db: DB) {
     c.set("seo", {
       title: "Comparisons · lol-tracker",
       description:
-        "Ten head-to-head graphs for the tracked friend group — rank race, lane dominance, vision, objectives, and a daily MVP crown.",
+        "Fifteen head-to-head graphs for the tracked friend group, ranked-only by default — rank race, lane dominance, vision, objectives, damage profile, first bloods, surrender stats, and a daily MVP crown.",
       path: "/compare",
     });
-    const filters = parseSinceQueue(c.req.query(), "30d");
+    const filters = parseSinceQueue(c.req.query(), "30d", "ranked");
     const data = pavilionData(db, buildSinceQueueOpts(filters));
     return c.render(<ComparePage data={data} filters={filters} />);
   });
 
   app.get("/fragments/compare", (c) => {
-    const filters = parseSinceQueue(c.req.query(), "30d");
+    const filters = parseSinceQueue(c.req.query(), "30d", "ranked");
     const data = pavilionData(db, buildSinceQueueOpts(filters));
     return c.html(<CompareBody data={data} />);
   });

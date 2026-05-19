@@ -1,6 +1,9 @@
 import type {
   ChampionAffairData,
   CrownEntry,
+  DamageProfileRow,
+  DurationRow,
+  FirstBloodRow,
   HourlySeries,
   LaneRow,
   Lane,
@@ -9,8 +12,11 @@ import type {
   RadarData,
   RankRaceData,
   ScatterSeries,
+  SurrenderRow,
   VisionRow,
+  WeekdayRow,
 } from "../../db/comparison-queries.js";
+import { WEEKDAYS } from "../../db/comparison-queries.js";
 
 export interface Banter {
   headline: string;
@@ -216,5 +222,157 @@ export function crownBanter(entries: CrownEntry[]): Banter {
   return {
     headline: `Crown of the Evening: ${latest.mvpDisplayName}.`,
     subtitle: `A solo recital — no rival took the floor.`,
+  };
+}
+
+export function damageBanter(rows: DamageProfileRow[]): Banter {
+  if (rows.length === 0) return SHRUG;
+  // Most lopsided physical vs magic split
+  let extremist: { row: DamageProfileRow; flavor: "physical" | "magic" | "true"; ratio: number } | null = null;
+  for (const r of rows) {
+    if (r.total === 0) continue;
+    const p = r.physical / r.total;
+    const m = r.magic / r.total;
+    const t = r.trueDmg / r.total;
+    const cand: Array<[number, "physical" | "magic" | "true"]> = [
+      [p, "physical"],
+      [m, "magic"],
+      [t, "true"],
+    ];
+    cand.sort((a, b) => b[0] - a[0]);
+    const [topRatio, topFlavor] = cand[0]!;
+    if (!extremist || topRatio > extremist.ratio) {
+      extremist = { row: r, flavor: topFlavor, ratio: topRatio };
+    }
+  }
+  if (!extremist) return SHRUG;
+  const heaviest = [...rows].sort((a, b) => b.total - a.total)[0]!;
+  const flavorWord =
+    extremist.flavor === "physical"
+      ? "blades and arrows"
+      : extremist.flavor === "magic"
+        ? "spellbook and sparkles"
+        : "raw, unfiltered violence";
+  return {
+    headline: `${extremist.row.displayName} swears by ${flavorWord}.`,
+    subtitle:
+      heaviest.puuid === extremist.row.puuid
+        ? `${(extremist.ratio * 100).toFixed(0)}% of the damage in one flavour — and the largest stack on the table to boot.`
+        : `${(extremist.ratio * 100).toFixed(0)}% of their damage in one flavour. Meanwhile ${heaviest.displayName} has the biggest pile of damage overall.`,
+  };
+}
+
+export function firstBloodBanter(rows: FirstBloodRow[]): Banter {
+  if (rows.length === 0) return SHRUG;
+  const bestFB = [...rows].sort((a, b) => b.firstBloodKills - a.firstBloodKills)[0]!;
+  const bestFT = [...rows].sort((a, b) => b.firstTowerKills - a.firstTowerKills)[0]!;
+  if (bestFB.firstBloodKills === 0 && bestFT.firstTowerKills === 0) {
+    return {
+      headline: "A quiet opening, every time.",
+      subtitle: "No first bloods, no first towers — the pavilion holds its breath.",
+    };
+  }
+  if (bestFB.puuid === bestFT.puuid) {
+    return {
+      headline: `${bestFB.displayName} eats early — ${bestFB.firstBloodKills} first bloods, ${bestFB.firstTowerKills} first towers.`,
+      subtitle: "Sets the tempo, hits the gong, and then the whole pavilion follows.",
+    };
+  }
+  return {
+    headline: `${bestFB.displayName} draws first blood ${bestFB.firstBloodKills}× — ${bestFT.displayName} cracks first plate ${bestFT.firstTowerKills}×.`,
+    subtitle: "The opener and the architect: two flavours of early-game greed.",
+  };
+}
+
+export function surrenderBanter(rows: SurrenderRow[]): Banter {
+  if (rows.length === 0) return SHRUG;
+  // Find the biggest white-flag waver: highest ownTeamFF / games ratio (>= 5 games)
+  const flaggers = rows
+    .filter((r) => r.games >= 5)
+    .map((r) => ({ row: r, ratio: r.games > 0 ? r.ownTeamFF / r.games : 0 }));
+  if (flaggers.length === 0) return SHRUG;
+  flaggers.sort((a, b) => b.ratio - a.ratio);
+  const surrender = flaggers[0]!;
+  const stalwarts = rows
+    .filter((r) => r.games >= 5)
+    .map((r) => ({ row: r, ratio: r.games > 0 ? r.played / r.games : 0 }));
+  stalwarts.sort((a, b) => b.ratio - a.ratio);
+  const stalwart = stalwarts[0]!;
+  if (surrender.row.puuid === stalwart.row.puuid) {
+    return {
+      headline: `${surrender.row.displayName} keeps a flag handy.`,
+      subtitle: `${(surrender.ratio * 100).toFixed(0)}% of their losses are FFs — and yet, ${(stalwart.ratio * 100).toFixed(0)}% of their games run the full nexus marathon.`,
+    };
+  }
+  return {
+    headline: `${surrender.row.displayName} waves the white flag fastest.`,
+    subtitle: `${(surrender.ratio * 100).toFixed(0)}% of their games end in surrender — meanwhile ${stalwart.row.displayName} grinds it out (${(stalwart.ratio * 100).toFixed(0)}% played to nexus).`,
+  };
+}
+
+export function durationBanter(rows: DurationRow[]): Banter {
+  if (rows.length === 0) return SHRUG;
+  // Best short-game closer, best long-game grinder
+  let closer: { name: string; wr: number; games: number } | null = null;
+  let grinder: { name: string; wr: number; games: number } | null = null;
+  for (const r of rows) {
+    const s = r.byBucket.short;
+    if (s.games >= 5 && (!closer || s.winrate > closer.wr)) {
+      closer = { name: r.displayName, wr: s.winrate, games: s.games };
+    }
+    const l = r.byBucket.long;
+    if (l.games >= 5 && (!grinder || l.winrate > grinder.wr)) {
+      grinder = { name: r.displayName, wr: l.winrate, games: l.games };
+    }
+  }
+  if (!closer && !grinder) return SHRUG;
+  if (closer && grinder && closer.name === grinder.name) {
+    return {
+      headline: `${closer.name} wins them short and long.`,
+      subtitle: `${(closer.wr * 100).toFixed(0)}% in stomps, ${(grinder.wr * 100).toFixed(0)}% in marathons. Pick a fight at any tempo.`,
+    };
+  }
+  if (closer && grinder) {
+    return {
+      headline: `${closer.name} closes early; ${grinder.name} closes late.`,
+      subtitle: `${(closer.wr * 100).toFixed(0)}% in stomps for one, ${(grinder.wr * 100).toFixed(0)}% in marathons for the other.`,
+    };
+  }
+  if (closer) {
+    return {
+      headline: `${closer.name} loves a fast finish.`,
+      subtitle: `${(closer.wr * 100).toFixed(0)}% in sub-25 stomps. The long games are a different theatre.`,
+    };
+  }
+  return {
+    headline: `${grinder!.name} survives the marathons.`,
+    subtitle: `${(grinder!.wr * 100).toFixed(0)}% in 35+ minute slogs. Patience is a champion.`,
+  };
+}
+
+export function weekdayBanter(rows: WeekdayRow[]): Banter {
+  if (rows.length === 0) return SHRUG;
+  let best: { name: string; day: string; wr: number; games: number } | null = null;
+  let worst: { name: string; day: string; wr: number; games: number } | null = null;
+  for (const r of rows) {
+    for (let i = 0; i < 7; i++) {
+      const cell = r.byDay[i]!;
+      if (cell.games < 5) continue;
+      const wr = cell.wins / cell.games;
+      const dayLabel = WEEKDAYS[i] ?? "";
+      if (!best || wr > best.wr) best = { name: r.displayName, day: dayLabel, wr, games: cell.games };
+      if (!worst || wr < worst.wr) worst = { name: r.displayName, day: dayLabel, wr, games: cell.games };
+    }
+  }
+  if (!best || !worst) return SHRUG;
+  if (best.name === worst.name) {
+    return {
+      headline: `${best.name} runs hot on ${best.day}.`,
+      subtitle: `${(best.wr * 100).toFixed(0)}% on the best day, ${(worst.wr * 100).toFixed(0)}% on the worst — same player. Pick your day.`,
+    };
+  }
+  return {
+    headline: `${best.name} owns ${best.day} (${(best.wr * 100).toFixed(0)}%).`,
+    subtitle: `${worst.name} should avoid ${worst.day} — winrate slumps to ${(worst.wr * 100).toFixed(0)}%.`,
   };
 }
