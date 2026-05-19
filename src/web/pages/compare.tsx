@@ -752,64 +752,68 @@ const PlayerToggles: FC<{ players: PlayerLite[]; excludedPuuids: string[] }> = (
 
 export const CompareBody: FC<{ data: PavilionData }> = ({ data }) => (
   <div class="gatsby-grid">
-    <DecoFrame index={1} kicker="Solo Queue LP over time" title="The Rank Race">
-      <RankRacePanel data={data.rankRace} />
-    </DecoFrame>
-
-    <DecoFrame index={2} kicker="All-axes head-to-head" title="The Eight-Axis Duel">
+    <DecoFrame index={1} kicker="All-axes head-to-head" title="The Eight-Axis Duel">
       <RadarPanel data={data.radar} />
     </DecoFrame>
 
-    <DecoFrame index={3} kicker="Winrate per pick × player" title="Champion Affairs">
+    <DecoFrame index={2} kicker="Winrate per pick × player" title="Champion Affairs">
       <ChampionAffairPanel data={data.champions} />
     </DecoFrame>
 
-    <DecoFrame index={4} kicker="Winrate by team position" title="Lane Dominance">
+    <DecoFrame index={3} kicker="Winrate by team position" title="Lane Dominance">
       <LanePanel rows={data.lanes} />
     </DecoFrame>
 
-    <DecoFrame index={5} kicker="Gold/min vs damage/min per match" title="The Gold Curve">
+    <DecoFrame index={4} kicker="Gold/min vs damage/min per match" title="The Gold Curve">
       <GoldCurvePanel series={data.goldCurve} />
     </DecoFrame>
 
-    <DecoFrame index={6} kicker="Wards placed · killed · control, per game" title="Vision Society">
+    <DecoFrame index={5} kicker="Wards placed · killed · control, per game" title="Vision Society">
       <VisionPanel rows={data.vision} />
     </DecoFrame>
 
-    <DecoFrame index={7} kicker="Career multikill ledger" title="Pentakill Pageant">
+    <DecoFrame index={6} kicker="Career multikill ledger" title="Pentakill Pageant">
       <PentakillPanel rows={data.multikills} />
     </DecoFrame>
 
-    <DecoFrame index={8} kicker="Winrate by hour of day" title="The Witching Hour">
+    <DecoFrame index={7} kicker="Winrate by hour of day" title="The Witching Hour">
       <WitchingHourPanel series={data.hourly} />
     </DecoFrame>
 
-    <DecoFrame index={9} kicker="Dragons · barons · turrets · inhibitors" title="Objective Orchestra">
+    <DecoFrame index={8} kicker="Dragons · barons · turrets · inhibitors" title="Objective Orchestra">
       <ObjectivePanel rows={data.objectives} />
     </DecoFrame>
 
-    <DecoFrame index={10} kicker="Daily MVP from a composite score" title="Crown of the Evening">
+    <DecoFrame index={9} kicker="Daily MVP from a composite score" title="Crown of the Evening">
       <CrownPanel entries={data.crowns} />
     </DecoFrame>
 
-    <DecoFrame index={11} kicker="Physical · magic · true damage to champions" title="The Damage Profile">
+    <DecoFrame index={10} kicker="Physical · magic · true damage to champions" title="The Damage Profile">
       <DamagePanel rows={data.damage} />
     </DecoFrame>
 
-    <DecoFrame index={12} kicker="First-blood and first-tower tallies" title="First Blood Brigade">
+    <DecoFrame index={11} kicker="First-blood and first-tower tallies" title="First Blood Brigade">
       <FirstBloodPanel rows={data.firstBlood} />
     </DecoFrame>
 
-    <DecoFrame index={13} kicker="Played out · own FF · enemy FF" title="Surrender Society">
+    <DecoFrame index={12} kicker="Played out · own FF · enemy FF" title="Surrender Society">
       <SurrenderPanel rows={data.surrender} />
     </DecoFrame>
 
-    <DecoFrame index={14} kicker="Winrate by game length" title="Duration Devils">
+    <DecoFrame index={13} kicker="Winrate by game length" title="Duration Devils">
       <DurationPanel rows={data.duration} />
     </DecoFrame>
 
-    <DecoFrame index={15} kicker="Winrate by weekday" title="The Days of the Gala">
+    <DecoFrame index={14} kicker="Winrate by weekday" title="The Days of the Gala">
       <WeekdayPanel rows={data.weekday} />
+    </DecoFrame>
+
+    <DecoFrame index={15} kicker="Solo Queue LP over time" title="The Rank Race">
+      <RankRacePanel data={data.rankRace} />
+    </DecoFrame>
+
+    <DecoFrame index={16} kicker="Flex Queue LP over time" title="The Flex Rank Race">
+      <RankRacePanel data={data.rankRaceFlex} />
     </DecoFrame>
   </div>
 );
@@ -823,7 +827,7 @@ export const ComparePage: FC<ComparePageProps> = ({ data, filters, allPlayers })
           Comparisons
         </h1>
         <p class="text-muted-foreground text-sm">
-          Fifteen head-to-head graphs for the friend group. Defaults to ranked queues —
+          Sixteen head-to-head graphs for the friend group. Defaults to ranked queues —
           flip the filter for ARAM, normals, or arena. Captions are auto-written from the
           data; share the receipts, settle the arguments.
         </p>
