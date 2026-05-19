@@ -220,6 +220,16 @@ export const playerMastery = sqliteTable(
   ],
 );
 
+/**
+ * Singleton key/value store for app-level state that doesn't fit anywhere else.
+ * Used to track the Riot API key fingerprint so we can detect rotations and
+ * trigger the `rekey` command instead of 400-storming on stale PUUIDs.
+ */
+export const meta = sqliteTable("meta", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});
+
 export type Player = typeof players.$inferSelect;
 export type NewPlayer = typeof players.$inferInsert;
 export type MatchRow = typeof matches.$inferSelect;

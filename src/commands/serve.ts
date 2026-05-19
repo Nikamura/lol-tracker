@@ -4,6 +4,7 @@ import pc from "picocolors";
 import { loadEnv } from "../config.js";
 import { openDb } from "../db/connect.js";
 import { pollAll } from "../ingest/poll.js";
+import { checkKeyFingerprint } from "../lib/key-check.js";
 import { RiotClient } from "../riot/client.js";
 import { createApp } from "../web/server.js";
 
@@ -40,11 +41,25 @@ export const serveCmd = defineCommand({
   async run({ args }) {
     const env = loadEnv();
     const db = openDb(env.LOL_TRACKER_DB);
+    const keyCheck = checkKeyFingerprint(db, env.RIOT_API_KEY);
     const client = new RiotClient({ apiKey: env.RIOT_API_KEY, verbose: args.verbose });
 
     const port = Number(args.port);
     const intervalSeconds = Number(args["poll-interval"]);
     const backfillDays = Number(args["backfill-days"]);
+
+    if (keyCheck.kind === "mismatch") {
+      console.error(
+        pc.red(
+          `✗ Riot API key fingerprint changed (${keyCheck.oldFingerprint} → ${keyCheck.newFingerprint}).`,
+        ),
+      );
+      console.error(
+        pc.yellow(
+          "  auto-poll disabled until 'lol-tracker rekey' is run; web UI still serves cached data.",
+        ),
+      );
+    }
 
     let polling = false;
     const runPoll = async (label: string) => {
@@ -79,7 +94,7 @@ export const serveCmd = defineCommand({
     };
 
     let pollTimer: NodeJS.Timeout | undefined;
-    if (intervalSeconds > 0) {
+    if (intervalSeconds > 0 && keyCheck.kind === "ok") {
       if (!args["skip-initial-poll"]) {
         void runPoll("startup");
       }
@@ -88,7 +103,7 @@ export const serveCmd = defineCommand({
         intervalSeconds * 1000,
       );
       console.log(pc.dim(`auto-poll every ${intervalSeconds}s`));
-    } else {
+    } else if (intervalSeconds === 0) {
       console.log(pc.dim("auto-poll disabled (poll-interval=0)"));
     }
 

@@ -13,6 +13,7 @@ import {
   matchParticipants,
   matchTimelines,
   matches,
+  meta,
   playerMastery,
   playerRankSnapshots,
   players,

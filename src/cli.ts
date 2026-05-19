@@ -3,6 +3,7 @@ import { defineCommand, runMain } from "citty";
 import { addCmd } from "./commands/add.js";
 import { listCmd } from "./commands/list.js";
 import { pollCmd } from "./commands/poll.js";
+import { rekeyCmd } from "./commands/rekey.js";
 import { removeCmd } from "./commands/remove.js";
 import { serveCmd } from "./commands/serve.js";
 import { timelineCmd } from "./commands/timeline.js";
@@ -18,6 +19,7 @@ const main = defineCommand({
     remove: removeCmd,
     list: listCmd,
     poll: pollCmd,
+    rekey: rekeyCmd,
     serve: serveCmd,
     timeline: timelineCmd,
   },
