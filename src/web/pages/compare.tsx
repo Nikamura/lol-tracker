@@ -649,26 +649,30 @@ const WeekdayPanel: FC<{ rows: WeekdayRow[] }> = ({ rows }) => {
                   if (cell.games === 0) {
                     return <td class="gatsby-heatmap__cell gatsby-heatmap__cell--empty">·</td>;
                   }
+                  const wr = cell.wins / cell.games;
+                  const pct = `${Math.round(wr * 100)}%`;
+                  // Tiny samples (1-2 games) get no winrate tint — just dim text,
+                  // so a "50%" off two games doesn't masquerade as a real trend.
                   if (cell.games < 3) {
                     return (
                       <td
                         class="gatsby-heatmap__cell"
+                        style="opacity:0.45"
                         title={`${r.displayName} · ${WEEKDAYS[i]}: ${cell.wins}/${cell.games} (sample too small)`}
                       >
-                        {cell.games}
+                        {pct}
                       </td>
                     );
                   }
-                  const wr = cell.wins / cell.games;
                   const size = Math.min(1, cell.games / 10);
                   const bg = winrateColor(wr, 0.15 + size * 0.65);
                   return (
                     <td
                       class="gatsby-heatmap__cell"
                       style={`background:${bg}`}
-                      title={`${r.displayName} · ${WEEKDAYS[i]}: ${cell.wins}/${cell.games} (${Math.round(wr * 100)}%)`}
+                      title={`${r.displayName} · ${WEEKDAYS[i]}: ${cell.wins}/${cell.games} (${pct})`}
                     >
-                      {Math.round(wr * 100)}%
+                      {pct}
                     </td>
                   );
                 })}
