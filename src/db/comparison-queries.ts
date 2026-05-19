@@ -833,6 +833,295 @@ export function crownOfTheEvening(
 }
 
 // ---------------------------------------------------------------------------
+// 11. Damage Profile — physical / magic / true damage breakdown
+// ---------------------------------------------------------------------------
+
+export interface DamageProfileRow {
+  puuid: string;
+  displayName: string;
+  games: number;
+  physical: number;
+  magic: number;
+  trueDmg: number;
+  total: number;
+}
+
+export function damageProfile(
+  db: DB,
+  opts: ComparisonOptions = {},
+): DamageProfileRow[] {
+  const playerList = readPlayers(db);
+  const conds = [
+    ...commonConds(opts),
+    inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
+    sql`${matches.gameMode} != 'CHERRY'`,
+  ];
+  const rows = db
+    .select({
+      puuid: matchParticipants.puuid,
+      games: sql<number>`COUNT(*)`,
+      physical: sql<number>`COALESCE(SUM(${matchParticipants.physicalDamageToChampions}), 0)`,
+      magic: sql<number>`COALESCE(SUM(${matchParticipants.magicDamageToChampions}), 0)`,
+      trueDmg: sql<number>`COALESCE(SUM(${matchParticipants.trueDamageToChampions}), 0)`,
+    })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
+    .where(and(...conds))
+    .groupBy(matchParticipants.puuid)
+    .all();
+  const nameMap = new Map(playerList.map((p) => [p.puuid, p.displayName]));
+  return rows
+    .map((r) => {
+      const physical = Number(r.physical);
+      const magic = Number(r.magic);
+      const trueDmg = Number(r.trueDmg);
+      return {
+        puuid: r.puuid,
+        displayName: nameMap.get(r.puuid) ?? r.puuid,
+        games: Number(r.games),
+        physical,
+        magic,
+        trueDmg,
+        total: physical + magic + trueDmg,
+      };
+    })
+    .filter((r) => r.games > 0)
+    .sort((a, b) => b.total - a.total);
+}
+
+// ---------------------------------------------------------------------------
+// 12. First Blood Brigade — first-blood and first-tower tallies
+// ---------------------------------------------------------------------------
+
+export interface FirstBloodRow {
+  puuid: string;
+  displayName: string;
+  games: number;
+  firstBloodKills: number;
+  firstBloodAssists: number;
+  firstTowerKills: number;
+  firstTowerAssists: number;
+}
+
+export function firstBloodBrigade(
+  db: DB,
+  opts: ComparisonOptions = {},
+): FirstBloodRow[] {
+  const playerList = readPlayers(db);
+  const conds = [
+    ...commonConds(opts),
+    inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
+    sql`${matches.gameMode} != 'CHERRY'`,
+  ];
+  const rows = db
+    .select({
+      puuid: matchParticipants.puuid,
+      games: sql<number>`COUNT(*)`,
+      fbKills: sql<number>`COALESCE(SUM(CASE WHEN ${matchParticipants.firstBloodKill} = 1 THEN 1 ELSE 0 END), 0)`,
+      fbAssists: sql<number>`COALESCE(SUM(CASE WHEN ${matchParticipants.firstBloodAssist} = 1 THEN 1 ELSE 0 END), 0)`,
+      ftKills: sql<number>`COALESCE(SUM(CASE WHEN ${matchParticipants.firstTowerKill} = 1 THEN 1 ELSE 0 END), 0)`,
+      ftAssists: sql<number>`COALESCE(SUM(CASE WHEN ${matchParticipants.firstTowerAssist} = 1 THEN 1 ELSE 0 END), 0)`,
+    })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
+    .where(and(...conds))
+    .groupBy(matchParticipants.puuid)
+    .all();
+  const nameMap = new Map(playerList.map((p) => [p.puuid, p.displayName]));
+  return playerList
+    .map((p) => {
+      const r = rows.find((x) => x.puuid === p.puuid);
+      return {
+        puuid: p.puuid,
+        displayName: nameMap.get(p.puuid) ?? p.puuid,
+        games: r ? Number(r.games) : 0,
+        firstBloodKills: r ? Number(r.fbKills) : 0,
+        firstBloodAssists: r ? Number(r.fbAssists) : 0,
+        firstTowerKills: r ? Number(r.ftKills) : 0,
+        firstTowerAssists: r ? Number(r.ftAssists) : 0,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.firstBloodKills + b.firstTowerKills -
+        (a.firstBloodKills + a.firstTowerKills),
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 13. Surrender Society — FF/played-out behaviour
+// ---------------------------------------------------------------------------
+
+export interface SurrenderRow {
+  puuid: string;
+  displayName: string;
+  games: number;
+  /** Game played to the nexus. */
+  played: number;
+  /** Our team waved the white flag. */
+  ownTeamFF: number;
+  /** Opponents surrendered. */
+  enemyFF: number;
+}
+
+export function surrenderSociety(
+  db: DB,
+  opts: ComparisonOptions = {},
+): SurrenderRow[] {
+  const playerList = readPlayers(db);
+  const conds = [
+    ...commonConds(opts),
+    inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
+    sql`${matches.gameMode} != 'CHERRY'`,
+  ];
+  const rows = db
+    .select({
+      puuid: matchParticipants.puuid,
+      games: sql<number>`COUNT(*)`,
+      // No surrender at all
+      played: sql<number>`COALESCE(SUM(CASE WHEN ${matchParticipants.gameEndedInSurrender} IS NULL OR ${matchParticipants.gameEndedInSurrender} = 0 THEN 1 ELSE 0 END), 0)`,
+      // Surrender + we lost = our team FF'd
+      ownTeamFF: sql<number>`COALESCE(SUM(CASE WHEN ${matchParticipants.gameEndedInSurrender} = 1 AND ${matchParticipants.win} = 0 THEN 1 ELSE 0 END), 0)`,
+      // Surrender + we won = enemy FF'd
+      enemyFF: sql<number>`COALESCE(SUM(CASE WHEN ${matchParticipants.gameEndedInSurrender} = 1 AND ${matchParticipants.win} = 1 THEN 1 ELSE 0 END), 0)`,
+    })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
+    .where(and(...conds))
+    .groupBy(matchParticipants.puuid)
+    .all();
+  const nameMap = new Map(playerList.map((p) => [p.puuid, p.displayName]));
+  return playerList
+    .map((p) => {
+      const r = rows.find((x) => x.puuid === p.puuid);
+      return {
+        puuid: p.puuid,
+        displayName: nameMap.get(p.puuid) ?? p.puuid,
+        games: r ? Number(r.games) : 0,
+        played: r ? Number(r.played) : 0,
+        ownTeamFF: r ? Number(r.ownTeamFF) : 0,
+        enemyFF: r ? Number(r.enemyFF) : 0,
+      };
+    })
+    .sort((a, b) => b.games - a.games);
+}
+
+// ---------------------------------------------------------------------------
+// 14. Duration Devils — winrate by game length bucket
+// ---------------------------------------------------------------------------
+
+export const DURATION_BUCKETS = ["short", "medium", "long"] as const;
+export type DurationBucket = (typeof DURATION_BUCKETS)[number];
+
+/** seconds — short < 25min, 25-35min mid, > 35min long. */
+const SHORT_SEC = 25 * 60;
+const LONG_SEC = 35 * 60;
+
+export interface DurationRow {
+  puuid: string;
+  displayName: string;
+  byBucket: Record<DurationBucket, { games: number; wins: number; winrate: number }>;
+}
+
+export function durationDevils(
+  db: DB,
+  opts: ComparisonOptions = {},
+): DurationRow[] {
+  const playerList = readPlayers(db);
+  const conds = [
+    ...commonConds(opts),
+    inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
+    sql`${matches.gameMode} != 'CHERRY'`,
+  ];
+  const rows = db
+    .select({
+      puuid: matchParticipants.puuid,
+      duration: matches.gameDuration,
+      win: matchParticipants.win,
+    })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
+    .where(and(...conds))
+    .all();
+  const out: DurationRow[] = playerList.map((p) => ({
+    puuid: p.puuid,
+    displayName: p.displayName,
+    byBucket: Object.fromEntries(
+      DURATION_BUCKETS.map((b) => [b, { games: 0, wins: 0, winrate: 0 }]),
+    ) as DurationRow["byBucket"],
+  }));
+  const byPuuid = new Map(out.map((r) => [r.puuid, r]));
+  for (const r of rows) {
+    const entry = byPuuid.get(r.puuid);
+    if (!entry) continue;
+    const bucket: DurationBucket =
+      r.duration < SHORT_SEC ? "short" : r.duration > LONG_SEC ? "long" : "medium";
+    const cell = entry.byBucket[bucket];
+    cell.games += 1;
+    if (r.win) cell.wins += 1;
+  }
+  for (const entry of out) {
+    for (const b of DURATION_BUCKETS) {
+      const cell = entry.byBucket[b];
+      cell.winrate = cell.games > 0 ? cell.wins / cell.games : 0;
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// 15. Day of the Week — winrate by weekday
+// ---------------------------------------------------------------------------
+
+export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
+export interface WeekdayRow {
+  puuid: string;
+  displayName: string;
+  /** 7 entries, Mon..Sun. */
+  byDay: Array<{ games: number; wins: number }>;
+}
+
+export function dayOfWeek(db: DB, opts: ComparisonOptions = {}): WeekdayRow[] {
+  const playerList = readPlayers(db);
+  const conds = [
+    ...commonConds(opts),
+    inArray(matchParticipants.puuid, playerList.map((p) => p.puuid)),
+  ];
+  const rows = db
+    .select({
+      puuid: matchParticipants.puuid,
+      gameStart: matches.gameStart,
+      win: matchParticipants.win,
+    })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
+    .where(and(...conds))
+    .all();
+  const byPuuid = new Map<string, WeekdayRow>();
+  for (const p of playerList) {
+    byPuuid.set(p.puuid, {
+      puuid: p.puuid,
+      displayName: p.displayName,
+      byDay: Array.from({ length: 7 }, () => ({ games: 0, wins: 0 })),
+    });
+  }
+  for (const r of rows) {
+    const d = new Date(r.gameStart);
+    const jsDay = d.getDay();
+    const dayIdx = (jsDay + 6) % 7;
+    const series = byPuuid.get(r.puuid);
+    if (!series) continue;
+    const bucket = series.byDay[dayIdx]!;
+    bucket.games += 1;
+    if (r.win) bucket.wins += 1;
+  }
+  return [...byPuuid.values()].sort((a, b) =>
+    a.displayName.localeCompare(b.displayName),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Bundle for the /gatsby page
 // ---------------------------------------------------------------------------
 
@@ -847,6 +1136,11 @@ export interface PavilionData {
   hourly: HourlySeries[];
   objectives: ObjectiveRow[];
   crowns: CrownEntry[];
+  damage: DamageProfileRow[];
+  firstBlood: FirstBloodRow[];
+  surrender: SurrenderRow[];
+  duration: DurationRow[];
+  weekday: WeekdayRow[];
 }
 
 export function pavilionData(db: DB, opts: ComparisonOptions = {}): PavilionData {
@@ -861,5 +1155,10 @@ export function pavilionData(db: DB, opts: ComparisonOptions = {}): PavilionData
     hourly: witchingHour(db, opts),
     objectives: objectiveOrchestra(db, opts),
     crowns: crownOfTheEvening(db, opts),
+    damage: damageProfile(db, opts),
+    firstBlood: firstBloodBrigade(db, opts),
+    surrender: surrenderSociety(db, opts),
+    duration: durationDevils(db, opts),
+    weekday: dayOfWeek(db, opts),
   };
 }

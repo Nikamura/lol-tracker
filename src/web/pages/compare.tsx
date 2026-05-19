@@ -2,6 +2,9 @@ import type { FC } from "hono/jsx";
 import type {
   ChampionAffairData,
   CrownEntry,
+  DamageProfileRow,
+  DurationRow,
+  FirstBloodRow,
   HourlySeries,
   LaneRow,
   MultiKillRow,
@@ -10,20 +13,26 @@ import type {
   RadarData,
   RankRaceData,
   ScatterSeries,
+  SurrenderRow,
   VisionRow,
+  WeekdayRow,
 } from "../../db/comparison-queries.js";
-import { LANES } from "../../db/comparison-queries.js";
-import { QUEUE_GROUPS } from "../../lib/queues.js";
+import { DURATION_BUCKETS, LANES, WEEKDAYS } from "../../db/comparison-queries.js";
 import {
   championAffairBanter,
   crownBanter,
+  damageBanter,
+  durationBanter,
+  firstBloodBanter,
   goldCurveBanter,
   laneBanter,
   objectivesBanter,
   pentakillBanter,
   radarBanter,
   rankRaceBanter,
+  surrenderBanter,
   visionBanter,
+  weekdayBanter,
   witchingHourBanter,
 } from "../lib/banter.js";
 import { Chart, ChartBoot } from "../components/chart.js";
@@ -43,8 +52,13 @@ const SINCE_OPTIONS = [
 ];
 
 const QUEUE_OPTIONS = [
+  { value: "ranked", label: "Ranked (Solo + Flex)" },
+  { value: "soloq", label: "Solo Queue" },
+  { value: "flex", label: "Flex Queue" },
+  { value: "normal", label: "Normal" },
+  { value: "aram", label: "ARAM" },
+  { value: "arena", label: "Arena" },
   { value: "all", label: "All queues" },
-  ...Object.keys(QUEUE_GROUPS).map((key) => ({ value: key, label: key })),
 ];
 
 // A palette for series — gold/cream/rose/jade/lavender. Cycles across players.
@@ -447,6 +461,227 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+const DamagePanel: FC<{ rows: DamageProfileRow[] }> = ({ rows }) => {
+  if (rows.length === 0) return <Empty title="No damage data" />;
+  const labels = rows.map((r) => r.displayName);
+  const config = {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Physical",
+          backgroundColor: colorFor(7), // copper
+          data: rows.map((r) => r.physical),
+        },
+        {
+          label: "Magic",
+          backgroundColor: colorFor(4), // lavender
+          data: rows.map((r) => r.magic),
+        },
+        {
+          label: "True",
+          backgroundColor: colorFor(0), // gold
+          data: rows.map((r) => r.trueDmg),
+        },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      scales: {
+        x: { stacked: true, title: { display: true, text: "Total damage to champions" } },
+        y: { stacked: true },
+      },
+      plugins: { legend: { position: "bottom" } },
+    },
+  };
+  return (
+    <>
+      <Chart config={config} height={Math.max(220, rows.length * 48)} />
+      <DecoCaption banter={damageBanter(rows)} />
+    </>
+  );
+};
+
+const FirstBloodPanel: FC<{ rows: FirstBloodRow[] }> = ({ rows }) => {
+  if (rows.length === 0) return <Empty title="No first-blood data" />;
+  const labels = rows.map((r) => r.displayName);
+  const config = {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "First blood (kill)",
+          backgroundColor: colorFor(3), // rose
+          data: rows.map((r) => r.firstBloodKills),
+        },
+        {
+          label: "First blood (assist)",
+          backgroundColor: colorFor(1), // brass
+          data: rows.map((r) => r.firstBloodAssists),
+        },
+        {
+          label: "First tower (kill)",
+          backgroundColor: colorFor(2), // jade
+          data: rows.map((r) => r.firstTowerKills),
+        },
+        {
+          label: "First tower (assist)",
+          backgroundColor: colorFor(6), // sapphire mist
+          data: rows.map((r) => r.firstTowerAssists),
+        },
+      ],
+    },
+    options: {
+      scales: {
+        x: { stacked: false },
+        y: { beginAtZero: true, title: { display: true, text: "Count" } },
+      },
+      plugins: { legend: { position: "bottom" } },
+    },
+  };
+  return (
+    <>
+      <Chart config={config} height={320} />
+      <DecoCaption banter={firstBloodBanter(rows)} />
+    </>
+  );
+};
+
+const SurrenderPanel: FC<{ rows: SurrenderRow[] }> = ({ rows }) => {
+  if (rows.length === 0) return <Empty title="No surrender data" />;
+  const labels = rows.map((r) => r.displayName);
+  const pct = (num: number, den: number) =>
+    den > 0 ? Math.round((num / den) * 1000) / 10 : 0;
+  const config = {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Played to nexus",
+          backgroundColor: colorFor(2), // jade
+          data: rows.map((r) => pct(r.played, r.games)),
+        },
+        {
+          label: "Own team FF",
+          backgroundColor: colorFor(3), // rose
+          data: rows.map((r) => pct(r.ownTeamFF, r.games)),
+        },
+        {
+          label: "Enemy FF",
+          backgroundColor: colorFor(0), // gold
+          data: rows.map((r) => pct(r.enemyFF, r.games)),
+        },
+      ],
+    },
+    options: {
+      scales: {
+        x: { stacked: true, max: 100, title: { display: true, text: "% of games" } },
+        y: { stacked: true },
+      },
+      indexAxis: "y",
+      plugins: { legend: { position: "bottom" } },
+    },
+  };
+  return (
+    <>
+      <Chart config={config} height={Math.max(220, rows.length * 48)} />
+      <DecoCaption banter={surrenderBanter(rows)} />
+    </>
+  );
+};
+
+const DurationPanel: FC<{ rows: DurationRow[] }> = ({ rows }) => {
+  if (rows.length === 0) return <Empty title="No duration data" />;
+  const labels = rows.map((r) => r.displayName);
+  const bucketLabel: Record<(typeof DURATION_BUCKETS)[number], string> = {
+    short: "Short (<25m)",
+    medium: "Medium (25–35m)",
+    long: "Long (>35m)",
+  };
+  const datasets = DURATION_BUCKETS.map((b, idx) => ({
+    label: bucketLabel[b],
+    backgroundColor: colorFor(idx * 3),
+    data: rows.map((r) => {
+      const cell = r.byBucket[b];
+      return cell.games >= 3 ? Math.round(cell.winrate * 100) : null;
+    }),
+  }));
+  const config = {
+    type: "bar",
+    data: { labels, datasets },
+    options: {
+      scales: {
+        y: { beginAtZero: true, max: 100, title: { display: true, text: "Winrate %" } },
+      },
+      plugins: { legend: { position: "bottom" } },
+    },
+  };
+  return (
+    <>
+      <Chart config={config} height={320} />
+      <DecoCaption banter={durationBanter(rows)} />
+    </>
+  );
+};
+
+const WeekdayPanel: FC<{ rows: WeekdayRow[] }> = ({ rows }) => {
+  if (rows.length === 0) return <Empty title="No weekday data" />;
+  return (
+    <>
+      <div class="gatsby-heatmap-scroll">
+        <table class="gatsby-heatmap">
+          <thead>
+            <tr>
+              <th class="gatsby-heatmap__corner"></th>
+              {WEEKDAYS.map((d) => (
+                <th class="gatsby-heatmap__champ"><span>{d}</span></th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr>
+                <th scope="row" class="gatsby-heatmap__row-label">{r.displayName}</th>
+                {r.byDay.map((cell, i) => {
+                  if (cell.games === 0) {
+                    return <td class="gatsby-heatmap__cell gatsby-heatmap__cell--empty">·</td>;
+                  }
+                  if (cell.games < 3) {
+                    return (
+                      <td
+                        class="gatsby-heatmap__cell"
+                        title={`${r.displayName} · ${WEEKDAYS[i]}: ${cell.wins}/${cell.games} (sample too small)`}
+                      >
+                        {cell.games}
+                      </td>
+                    );
+                  }
+                  const wr = cell.wins / cell.games;
+                  const size = Math.min(1, cell.games / 10);
+                  const bg = winrateColor(wr, 0.15 + size * 0.65);
+                  return (
+                    <td
+                      class="gatsby-heatmap__cell"
+                      style={`background:${bg}`}
+                      title={`${r.displayName} · ${WEEKDAYS[i]}: ${cell.wins}/${cell.games} (${Math.round(wr * 100)}%)`}
+                    >
+                      {Math.round(wr * 100)}%
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <DecoCaption banter={weekdayBanter(rows)} />
+    </>
+  );
+};
+
 // ---------------------------------------------------------------------------
 // Page shell
 // ---------------------------------------------------------------------------
@@ -497,6 +732,26 @@ export const CompareBody: FC<{ data: PavilionData }> = ({ data }) => (
     <DecoFrame index={10} kicker="Daily MVP from a composite score" title="Crown of the Evening">
       <CrownPanel entries={data.crowns} />
     </DecoFrame>
+
+    <DecoFrame index={11} kicker="Physical · magic · true damage to champions" title="The Damage Profile">
+      <DamagePanel rows={data.damage} />
+    </DecoFrame>
+
+    <DecoFrame index={12} kicker="First-blood and first-tower tallies" title="First Blood Brigade">
+      <FirstBloodPanel rows={data.firstBlood} />
+    </DecoFrame>
+
+    <DecoFrame index={13} kicker="Played out · own FF · enemy FF" title="Surrender Society">
+      <SurrenderPanel rows={data.surrender} />
+    </DecoFrame>
+
+    <DecoFrame index={14} kicker="Winrate by game length" title="Duration Devils">
+      <DurationPanel rows={data.duration} />
+    </DecoFrame>
+
+    <DecoFrame index={15} kicker="Winrate by weekday" title="The Days of the Gala">
+      <WeekdayPanel rows={data.weekday} />
+    </DecoFrame>
   </div>
 );
 
@@ -509,8 +764,9 @@ export const ComparePage: FC<ComparePageProps> = ({ data, filters }) => (
           Comparisons
         </h1>
         <p class="text-muted-foreground text-sm">
-          Ten head-to-head graphs for the friend group. Captions are auto-written from the
-          data — share the receipts, settle the arguments.
+          Fifteen head-to-head graphs for the friend group. Defaults to ranked queues —
+          flip the filter for ARAM, normals, or arena. Captions are auto-written from the
+          data; share the receipts, settle the arguments.
         </p>
       </div>
     </header>
