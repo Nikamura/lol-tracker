@@ -18,6 +18,8 @@ import { streaksForAll } from "../db/streak-queries.js";
 import { heatmapData } from "../db/heatmap-queries.js";
 import { parseSince, resolveQueueFilter } from "../lib/queues.js";
 import { Layout } from "./layout.js";
+import { RefreshButton } from "./components/refresh-button.js";
+import type { RefreshController } from "./refresh.js";
 import { resolveBaseUrl, resolveSeo, type PageSeo } from "./seo.js";
 import { MatchTabs, type TabKey } from "./pages/match-tabs.js";
 import { PlayersPage } from "./pages/players.js";
@@ -115,8 +117,13 @@ function coerceHeatmapsQueue(q: string): HeatmapsQueue {
   return (HEATMAPS_QUEUE as readonly string[]).includes(q) ? (q as HeatmapsQueue) : "all";
 }
 
-export function createApp(db: DB) {
+export interface CreateAppOptions {
+  refresh?: RefreshController | undefined;
+}
+
+export function createApp(db: DB, options: CreateAppOptions = {}) {
   const app = new Hono<{ Variables: Variables }>();
+  const { refresh } = options;
 
   app.use(
     "/static/*",
@@ -128,8 +135,9 @@ export function createApp(db: DB) {
     jsxRenderer(
       ({ children }, c) => {
         const seo = resolveSeo(c.get("seo"), resolveBaseUrl(c.req.url));
+        const refreshState = refresh?.getState() ?? null;
         return (
-          <Layout active={c.get("active")} seo={seo}>
+          <Layout active={c.get("active")} seo={seo} refreshState={refreshState}>
             {children}
           </Layout>
         );
@@ -137,6 +145,16 @@ export function createApp(db: DB) {
       { docType: true },
     ),
   );
+
+  if (refresh) {
+    app.get("/fragments/refresh-button", (c) =>
+      c.html(<RefreshButton state={refresh.getState()} />),
+    );
+    app.post("/refresh", (c) => {
+      refresh.request();
+      return c.html(<RefreshButton state={refresh.getState()} />);
+    });
+  }
 
   app.get("/", (c) => {
     c.set("active", "timeline");

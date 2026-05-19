@@ -3,9 +3,10 @@ import { defineCommand } from "citty";
 import pc from "picocolors";
 import { loadEnv } from "../config.js";
 import { openDb } from "../db/connect.js";
-import { pollAll } from "../ingest/poll.js";
+import { pollAll, type PollResult } from "../ingest/poll.js";
 import { checkKeyFingerprint } from "../lib/key-check.js";
 import { RiotClient } from "../riot/client.js";
+import { createRefreshController } from "../web/refresh.js";
 import { createApp } from "../web/server.js";
 
 export const serveCmd = defineCommand({
@@ -36,6 +37,12 @@ export const serveCmd = defineCommand({
       description: "Don't run a poll immediately on startup",
       default: false,
     },
+    "refresh-cooldown": {
+      type: "string",
+      description:
+        "Seconds between manual web-UI refreshes. Env: REFRESH_COOLDOWN_SECONDS. Set to 0 to hide the button.",
+      default: process.env.REFRESH_COOLDOWN_SECONDS ?? "60",
+    },
     verbose: { type: "boolean", description: "Verbose Riot client logging", default: false },
   },
   async run({ args }) {
@@ -47,6 +54,7 @@ export const serveCmd = defineCommand({
     const port = Number(args.port);
     const intervalSeconds = Number(args["poll-interval"]);
     const backfillDays = Number(args["backfill-days"]);
+    const refreshCooldownSec = Number(args["refresh-cooldown"]);
 
     if (keyCheck.kind === "mismatch") {
       console.error(
@@ -61,13 +69,7 @@ export const serveCmd = defineCommand({
       );
     }
 
-    let polling = false;
-    const runPoll = async (label: string) => {
-      if (polling) {
-        console.log(pc.dim(`[poll:${label}] skipped (previous run still in flight)`));
-        return;
-      }
-      polling = true;
+    const runPoll = async (label: string): Promise<PollResult[]> => {
       const t0 = Date.now();
       try {
         const results = await pollAll(db, client, {
@@ -86,28 +88,43 @@ export const serveCmd = defineCommand({
             `[poll:${label}] ${((Date.now() - t0) / 1000).toFixed(1)}s — ${newMatches} matches, ${tl} timelines, ${results.length} players${errs ? `, ${errs} errored` : ""}`,
           ),
         );
+        return results;
       } catch (e) {
         console.error(pc.red(`[poll:${label}] failed:`), e);
-      } finally {
-        polling = false;
+        throw e;
+      }
+    };
+
+    const refresh = createRefreshController({
+      cooldownMs: Math.max(0, refreshCooldownSec) * 1000,
+      run: runPoll,
+      isDisabled: () =>
+        keyCheck.kind === "mismatch"
+          ? "Riot API key changed — run 'lol-tracker rekey' to re-enable"
+          : null,
+    });
+
+    const triggerPoll = (label: string) => {
+      const result = refresh.request({ bypassCooldown: true, trigger: label });
+      if (result.kind === "busy") {
+        console.log(pc.dim(`[poll:${label}] skipped (previous run still in flight)`));
       }
     };
 
     let pollTimer: NodeJS.Timeout | undefined;
     if (intervalSeconds > 0 && keyCheck.kind === "ok") {
       if (!args["skip-initial-poll"]) {
-        void runPoll("startup");
+        triggerPoll("startup");
       }
-      pollTimer = setInterval(
-        () => void runPoll("interval"),
-        intervalSeconds * 1000,
-      );
+      pollTimer = setInterval(() => triggerPoll("interval"), intervalSeconds * 1000);
       console.log(pc.dim(`auto-poll every ${intervalSeconds}s`));
     } else if (intervalSeconds === 0) {
       console.log(pc.dim("auto-poll disabled (poll-interval=0)"));
     }
 
-    const app = createApp(db);
+    const app = createApp(db, {
+      refresh: refreshCooldownSec > 0 ? refresh : undefined,
+    });
     const server = serve({ fetch: app.fetch, port }, ({ port: p }) => {
       console.log(pc.green(`lol-tracker web · http://0.0.0.0:${p}`));
     });

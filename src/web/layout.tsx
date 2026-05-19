@@ -1,11 +1,15 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
+import { RefreshButton } from "./components/refresh-button.js";
+import type { RefreshState } from "./refresh.js";
 import type { ResolvedSeo } from "./seo.js";
 
-export const Layout: FC<PropsWithChildren<{ active?: string; seo: ResolvedSeo }>> = ({
-  active,
-  seo,
-  children,
-}) => (
+export const Layout: FC<
+  PropsWithChildren<{
+    active?: string;
+    seo: ResolvedSeo;
+    refreshState?: RefreshState | null;
+  }>
+> = ({ active, seo, refreshState, children }) => (
   <html lang="en" class="dark">
     <head>
       <meta charset="utf-8" />
@@ -57,14 +61,17 @@ export const Layout: FC<PropsWithChildren<{ active?: string; seo: ResolvedSeo }>
       </noscript>
     </head>
     <body class="min-h-screen bg-background text-foreground">
-      <Masthead active={active} />
+      <Masthead active={active} refreshState={refreshState ?? null} />
       <main class="mx-auto max-w-6xl px-6 pb-16">{children}</main>
       <Footer />
     </body>
   </html>
 );
 
-const Masthead: FC<{ active?: string | undefined }> = ({ active }) => (
+const Masthead: FC<{ active?: string | undefined; refreshState: RefreshState | null }> = ({
+  active,
+  refreshState,
+}) => (
   <header class="relative border-b border-border/70">
     <div class="mx-auto max-w-6xl px-6">
       {/* eyebrow strip */}
@@ -92,8 +99,11 @@ const Masthead: FC<{ active?: string | undefined }> = ({ active }) => (
             Match&nbsp;archive&nbsp;·&nbsp;Tactical&nbsp;readout
           </span>
         </a>
-        <div class="hidden md:flex items-end gap-4 text-right">
-          <ClockChip />
+        <div class="flex items-end gap-4 text-right">
+          {refreshState ? <RefreshButton state={refreshState} /> : null}
+          <span class="hidden md:flex">
+            <ClockChip />
+          </span>
         </div>
       </div>
 
