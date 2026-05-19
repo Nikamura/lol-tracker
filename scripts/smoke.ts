@@ -11,10 +11,21 @@ import {
   upsertPlayer,
 } from "../src/db/queries.js";
 import {
+  KEY_FINGERPRINT_META,
+  getMeta,
+  keyFingerprint,
+  rekeyPlayerPuuid,
+  rewriteRawJsonPuuids,
+  setMeta,
+} from "../src/db/rekey.js";
+import {
+  ingestState,
   matchParticipants,
   matchTimelines,
+  matches,
   playerMastery,
   playerRankSnapshots,
+  players,
 } from "../src/db/schema.js";
 import { Match, MatchTimeline } from "../src/riot/types.js";
 
@@ -269,6 +280,110 @@ db.$client.close();
 const db2 = openDb(DB_PATH);
 const rows = queryTimeline(db2);
 console.assert(rows.length === all.length, "reopen preserves rows");
+
+// rekey: rotate P1 → P1_NEW across every table, leave P2 alone.
+const fp = keyFingerprint("RGAPI-abc-123");
+setMeta(db2, KEY_FINGERPRINT_META, fp);
+console.assert(getMeta(db2, KEY_FINGERPRINT_META) === fp, "meta round-trips");
+console.assert(fp.length === 16, "fingerprint is 16 hex chars");
+
+rekeyPlayerPuuid(db2, "P1", "P1_NEW");
+
+console.assert(
+  db2.select().from(players).where(eq(players.puuid, "P1")).get() === undefined,
+  "old player puuid gone",
+);
+console.assert(
+  db2.select().from(players).where(eq(players.puuid, "P1_NEW")).get() !== undefined,
+  "new player puuid present",
+);
+console.assert(
+  db2.select().from(players).where(eq(players.puuid, "P2")).get() !== undefined,
+  "untouched player preserved",
+);
+console.assert(
+  db2.select().from(matchParticipants).where(eq(matchParticipants.puuid, "P1")).all()
+    .length === 0,
+  "match_participants moved off old puuid",
+);
+console.assert(
+  db2.select().from(matchParticipants).where(eq(matchParticipants.puuid, "P1_NEW"))
+    .all().length > 0,
+  "match_participants moved to new puuid",
+);
+console.assert(
+  db2.select().from(playerRankSnapshots).where(eq(playerRankSnapshots.puuid, "P1_NEW"))
+    .all().length === 1,
+  "rank snapshot moved",
+);
+console.assert(
+  db2.select().from(playerMastery).where(eq(playerMastery.puuid, "P1_NEW")).all()
+    .length === 1,
+  "mastery moved",
+);
+console.assert(
+  db2.select().from(ingestState).where(eq(ingestState.puuid, "P1_NEW")).get() !==
+    undefined,
+  "ingest_state moved",
+);
+
+// re-running with same old/new should be a no-op (and not throw)
+rekeyPlayerPuuid(db2, "P1_NEW", "P1_NEW");
+
+// rewrite raw_json blobs: matches.metadata.participants and info.participants[].puuid
+const before = db2
+  .select({ rawJson: matches.rawJson })
+  .from(matches)
+  .where(eq(matches.matchId, "EUW1_001"))
+  .get();
+console.assert(
+  before?.rawJson.metadata.participants.includes("P1"),
+  "pre-rewrite: raw_json still references P1",
+);
+
+const r = rewriteRawJsonPuuids(db2, new Map([["P1", "P1_NEW"]]));
+console.assert(r.matchesUpdated === 3, `expected 3 matches rewritten, got ${r.matchesUpdated}`);
+console.assert(r.timelinesUpdated === 1, `expected 1 timeline rewritten, got ${r.timelinesUpdated}`);
+
+const after = db2
+  .select({ rawJson: matches.rawJson })
+  .from(matches)
+  .where(eq(matches.matchId, "EUW1_001"))
+  .get();
+console.assert(
+  !after?.rawJson.metadata.participants.includes("P1"),
+  "post-rewrite: raw_json no longer references P1",
+);
+console.assert(
+  after?.rawJson.metadata.participants.includes("P1_NEW"),
+  "post-rewrite: raw_json now references P1_NEW",
+);
+console.assert(
+  after?.rawJson.info.participants[0]?.puuid === "P1_NEW",
+  "post-rewrite: participant puuid updated",
+);
+console.assert(
+  after?.rawJson.info.participants[1]?.puuid === "P2",
+  "post-rewrite: untouched participant preserved",
+);
+
+const tlAfter = db2
+  .select({ rawJson: matchTimelines.rawJson })
+  .from(matchTimelines)
+  .where(eq(matchTimelines.matchId, "EUW1_001"))
+  .get();
+console.assert(
+  tlAfter?.rawJson.metadata.participants.includes("P1_NEW"),
+  "post-rewrite: timeline metadata updated",
+);
+
+// idempotent: re-running with same mapping should be a no-op (no rows updated)
+const r2 = rewriteRawJsonPuuids(db2, new Map([["P1", "P1_NEW"]]));
+console.assert(
+  r2.matchesUpdated === 0 && r2.timelinesUpdated === 0,
+  "second rewrite is a no-op",
+);
+
 db2.$client.close();
 
 console.log("smoke ok — drizzle schema, zod-parsed matches, projected columns, all round-trip");

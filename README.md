@@ -40,6 +40,7 @@ Dev-key rate limits: 20 req/s · 100 req / 2 min. The client honours both with a
 | `remove <gameName#tagLine> [--purge-matches] [--yes]` | Stop tracking a player and cascade-delete their unique data (rank snapshots, mastery, ingest cursor). |
 | `list` | Show tracked players and when each was last polled. |
 | `poll [--backfill-days 7] [--skip-timelines] [--skip-rank] [--skip-mastery] [--mastery-stale-hours 24] [--verbose]` | Incremental fetch for all tracked players. |
+| `rekey [--dry-run] [--rewrite-json] [--verbose]` | Rotate PUUIDs after a Riot API key change. Re-resolves every tracked Riot ID and updates every table keyed on PUUID. |
 | `serve [--port 5173] [--poll-interval 600] [--backfill-days 7] [--skip-initial-poll]` | Run the web UI **and** auto-poll on an interval. Container default. |
 | `timeline [--since 7d] [--player <n>] [--queue <q>] [--limit 100]` | Chronological feed across everyone. |
 
@@ -60,6 +61,7 @@ SQLite at `./data/lol-tracker.db` (configurable via `LOL_TRACKER_DB`). Schema is
 - `player_rank_snapshots` — solo/flex tier, rank, LP, W/L captured at each poll. Lets you graph LP over time.
 - `player_mastery` — mastery points & level per champion per player. Refreshed every 24h by default.
 - `ingest_state` — per-player cursors: `last_match_start`, `last_rank_at`, `last_mastery_at`.
+- `meta` — singleton key/value store; today holds `riot_key_fingerprint` (first 16 hex chars of `SHA-256(RIOT_API_KEY)`) so `poll` / `serve` can detect a key rotation and refuse to run until `lol-tracker rekey` is invoked.
 
 WAL mode + `onConflictDoNothing()` on matches means concurrent polls are safe and reruns are idempotent.
 
@@ -177,6 +179,31 @@ the container alive across reboots.
 The image still exposes the full CLI — useful for one-shot ops like adding
 players, running an immediate poll, or pulling a timeline from inside the
 container: `docker compose exec lol-tracker node dist/cli.js <subcommand>`.
+
+## Rotating your Riot API key
+
+Riot encrypts PUUIDs with a key tied to your API key, so when you rotate the key
+every stored PUUID becomes an opaque blob the new key can't decrypt (you'll see
+`400 Exception decrypting <puuid>` on every PUUID-keyed endpoint). `rekey`
+fixes this:
+
+```bash
+# After editing .env with the new RIOT_API_KEY
+pnpm dev rekey --dry-run        # preview which players will be rotated
+pnpm dev rekey                  # rotate puuids across players, match_participants,
+                                # player_rank_snapshots, player_mastery, ingest_state
+pnpm dev rekey --rewrite-json   # also rewrite puuids inside matches.raw_json
+                                # and match_timelines.raw_json (slower; only
+                                # needed if v2 code mines the raw JSON)
+```
+
+Mechanically, `rekey` calls Account-V1 (`by-riot-id/<gameName>/<tagLine>`) with
+the new key for each tracked player — that lookup is name-keyed, not PUUID-keyed,
+so it works regardless of which key issued the original PUUID — then updates
+every table inside a single SQLite transaction (with `PRAGMA defer_foreign_keys`
+to satisfy the FKs on `players.puuid`). A SHA-256 fingerprint of the API key
+is stored in `meta` so `poll` refuses to run, and `serve` disables auto-poll,
+until `rekey` has caught up with the new key.
 
 ## Roadmap (v2)
 
