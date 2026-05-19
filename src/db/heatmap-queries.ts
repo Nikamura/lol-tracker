@@ -1,5 +1,6 @@
 import { and, asc, eq, gte, inArray, type SQL } from "drizzle-orm";
 import type { DB } from "./connect.js";
+import { notRemakeCond } from "./match-filters.js";
 import { matchParticipants, matches, players } from "./schema.js";
 
 /**
@@ -44,7 +45,7 @@ export interface HeatmapsOptions {
  * SQLite about it).
  */
 export function heatmapData(db: DB, opts: HeatmapsOptions = {}): HeatmapsData {
-  const conds: SQL[] = [];
+  const conds: SQL[] = [notRemakeCond()];
   if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
   if (opts.queueIds?.length) conds.push(inArray(matches.queueId, opts.queueIds));
 

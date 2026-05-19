@@ -1,9 +1,9 @@
 import type { FC } from "hono/jsx";
 import type { PartyRow } from "../../db/queries.js";
 import { queueLabel } from "../../lib/queues.js";
-import { isRemake, MatchExpand, MatchRow } from "../components/match-row.js";
+import { MatchExpand, MatchRow } from "../components/match-row.js";
 import { cn } from "../lib/cn.js";
-import { Badge, Empty } from "../components/ui.js";
+import { Empty } from "../components/ui.js";
 
 function fmtDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -45,21 +45,19 @@ export const PartyCard: FC<{ party: PartyRow }> = ({ party }) => {
     const bo = LANE_ORDER[b.teamPosition ?? ""] ?? 99;
     return ao - bo;
   });
-  const remake = party.members.length > 0 && isRemake(party.members[0]!);
   return (
     <section
       class={cn(
         "overflow-hidden rounded-sm border border-border/70",
         "relative bg-card",
         "shadow-[0_18px_60px_-32px_oklch(0_0_0/0.6)]",
-        remake && "opacity-70",
       )}
     >
       {/* result rail along the top */}
       <span
         class={cn(
           "absolute inset-x-0 top-0 h-[3px]",
-          remake ? "bg-muted-foreground/40" : party.win ? "bg-success" : "bg-destructive",
+          party.win ? "bg-success" : "bg-destructive",
         )}
         aria-hidden="true"
       />
@@ -76,10 +74,10 @@ export const PartyCard: FC<{ party: PartyRow }> = ({ party }) => {
           <span
             class={cn(
               "kicker text-2xl tracking-[0.22em]",
-              remake ? "text-muted-foreground" : party.win ? "text-success" : "text-destructive",
+              party.win ? "text-success" : "text-destructive",
             )}
           >
-            {remake ? "Remake" : party.win ? "Victory" : "Defeat"}
+            {party.win ? "Victory" : "Defeat"}
           </span>
         </div>
       </header>

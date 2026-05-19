@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { DB } from "./connect.js";
+import { notRemakeCond } from "./match-filters.js";
 import {
   matchParticipants,
   matches,
@@ -122,7 +123,7 @@ interface NumericMetric {
 }
 
 function commonConds(opts: LeaderboardOptions) {
-  const conds = [] as ReturnType<typeof eq>[];
+  const conds = [notRemakeCond()] as ReturnType<typeof eq>[];
   if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
   if (opts.queueIds?.length) conds.push(inArray(matches.queueId, opts.queueIds));
   return conds;
