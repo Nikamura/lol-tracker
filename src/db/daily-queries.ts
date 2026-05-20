@@ -1,6 +1,7 @@
 import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import type { DB } from "./connect.js";
 import { notRemakeCond } from "./match-filters.js";
+import { gatsbyScore } from "./mvp-score.js";
 import { matchParticipants, matches, players } from "./schema.js";
 import { queryParties, type PartyRow } from "./queries.js";
 
@@ -190,35 +191,6 @@ export interface DailyComparison {
 }
 
 /**
- * Gatsby Score per-game — same formula as crownOfTheEvening() in
- * comparison-queries.ts. Composite of KDA, KP, damage, vision, objectives, win.
- */
-function gatsbyScore(args: {
-  kills: number;
-  deaths: number;
-  assists: number;
-  damage: number;
-  vision: number;
-  dragons: number;
-  barons: number;
-  turrets: number;
-  win: boolean;
-  kp: number;
-}): number {
-  const kda = (args.kills + args.assists) / Math.max(1, args.deaths);
-  return (
-    2.0 * Math.min(8, kda) +
-    4.0 * Math.min(1, args.kp) +
-    0.0006 * args.damage +
-    0.04 * args.vision +
-    1.5 * (args.dragons + args.barons) +
-    0.4 * args.turrets +
-    (args.win ? 2.0 : -1.0) -
-    0.4 * Math.max(0, args.deaths - 6)
-  );
-}
-
-/**
  * Aggregate stats for every tracked friend that played a non-remake game on
  * the given calendar day. Includes Arena (CHERRY) so banter can cover all
  * games — the existing Crown query excludes CHERRY, but for end-of-day awards
@@ -239,10 +211,13 @@ export function dailyComparison(db: DB, dayMs: number): DailyComparison {
       displayName: players.displayName,
       gameName: players.gameName,
       teamId: matchParticipants.teamId,
+      teamPosition: matchParticipants.teamPosition,
       kills: matchParticipants.kills,
       deaths: matchParticipants.deaths,
       assists: matchParticipants.assists,
       damage: matchParticipants.totalDamageDealtToChampions,
+      damageTaken: matchParticipants.totalDamageTaken,
+      damageToBuildings: matchParticipants.damageDealtToBuildings,
       vision: matchParticipants.visionScore,
       wardsPlaced: matchParticipants.wardsPlaced,
       wardsKilled: matchParticipants.wardsKilled,
@@ -384,12 +359,15 @@ export function dailyComparison(db: DB, dayMs: number): DailyComparison {
       deaths: r.deaths,
       assists: r.assists,
       damage,
+      damageTaken: r.damageTaken ?? 0,
+      damageToBuildings: r.damageToBuildings ?? 0,
       vision,
       dragons: r.dragonKills ?? 0,
       barons: r.baronKills ?? 0,
       turrets: r.turretKills ?? 0,
       win: r.win,
       kp,
+      teamPosition: r.teamPosition,
     });
   }
 

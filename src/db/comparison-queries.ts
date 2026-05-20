@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { DB } from "./connect.js";
 import { notRemakeCond } from "./match-filters.js";
+import { gatsbyScore } from "./mvp-score.js";
 import {
   matchParticipants,
   matches,
@@ -701,10 +702,13 @@ interface CrownMatchRow {
   matchId: string;
   puuid: string;
   teamId: number;
+  teamPosition: string | null;
   kills: number;
   deaths: number;
   assists: number;
   damage: number;
+  damageTaken: number | null;
+  damageToBuildings: number | null;
   vision: number;
   dragons: number;
   barons: number;
@@ -745,10 +749,13 @@ export function crownOfTheEvening(
       matchId: matchParticipants.matchId,
       puuid: matchParticipants.puuid,
       teamId: matchParticipants.teamId,
+      teamPosition: matchParticipants.teamPosition,
       kills: matchParticipants.kills,
       deaths: matchParticipants.deaths,
       assists: matchParticipants.assists,
       damage: matchParticipants.totalDamageDealtToChampions,
+      damageTaken: matchParticipants.totalDamageTaken,
+      damageToBuildings: matchParticipants.damageDealtToBuildings,
       vision: matchParticipants.visionScore,
       dragons: matchParticipants.dragonKills,
       barons: matchParticipants.baronKills,
@@ -794,17 +801,21 @@ export function crownOfTheEvening(
     if (!trackedSet.has(r.puuid)) continue;
     const tk = teamKillsByMatch.get(r.matchId)?.get(r.teamId) ?? 0;
     const kp = tk > 0 ? (r.kills + r.assists) / tk : 0;
-    const kda = (r.kills + r.assists) / Math.max(1, r.deaths);
-    // Gatsby Score: weighted composite, normalized rough-and-ready
-    const score =
-      2.0 * Math.min(8, kda) +
-      4.0 * Math.min(1, kp) +
-      0.0006 * r.damage +
-      0.04 * r.vision +
-      1.5 * (r.dragons + r.barons) +
-      0.4 * r.turrets +
-      (r.win ? 2.0 : -1.0) -
-      0.4 * Math.max(0, r.deaths - 6);
+    const score = gatsbyScore({
+      kills: r.kills,
+      deaths: r.deaths,
+      assists: r.assists,
+      damage: r.damage,
+      damageTaken: r.damageTaken ?? 0,
+      damageToBuildings: r.damageToBuildings ?? 0,
+      vision: r.vision,
+      dragons: r.dragons,
+      barons: r.barons,
+      turrets: r.turrets,
+      win: r.win,
+      kp,
+      teamPosition: r.teamPosition,
+    });
     const key = dayKey(r.gameStart);
     const dayMap = byDay.get(key) ?? new Map<string, Acc>();
     const acc = dayMap.get(r.puuid) ?? { score: 0, games: 0 };
