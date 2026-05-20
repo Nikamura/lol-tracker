@@ -270,6 +270,30 @@ export async function runMcpServerOverStdio(db: DB): Promise<void> {
   await server.connect(transport);
 }
 
+/**
+ * Handle one MCP HTTP request. Each call spins up a fresh transport + server:
+ * the SDK forbids reusing a stateless streamable-HTTP transport across
+ * requests (would cause message-id collisions), and `MCPServer` construction
+ * is just zod schema registration — cheap enough to do per request.
+ *
+ * Designed to be mounted into any web framework — e.g. as a Hono route on the
+ * existing `serve` app:
+ *
+ *     app.all("/mcp", (c) => handleMcpHttpRequest(db, c.req.raw));
+ */
+export async function handleMcpHttpRequest(db: DB, req: Request): Promise<Response> {
+  const server = createLolTrackerMcpServer(db);
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    enableJsonResponse: true,
+  });
+  try {
+    await server.connect(transport);
+    return await transport.handleRequest(req);
+  } finally {
+    await server.close().catch(() => {});
+  }
+}
+
 export interface HttpServerHandle {
   server: ServerType;
   port: number;
@@ -278,11 +302,9 @@ export interface HttpServerHandle {
 }
 
 /**
- * Stateless MCP-over-HTTP. A fresh transport + server is spun up per request
- * (the SDK forbids reusing a stateless transport across requests because
- * message IDs would collide). Server construction is cheap — just schema
- * registration — so this is fine for a small hosted MCP and avoids the
- * session-tracking bookkeeping a stateful deployment would need.
+ * Stand-alone HTTP host for the MCP server. Used by `lol-tracker mcp` when
+ * launched outside of `serve`; the `serve` command mounts `handleMcpHttpRequest`
+ * directly on its existing Hono app instead.
  */
 export async function runMcpServerOverHttp(
   db: DB,
@@ -299,16 +321,7 @@ export async function runMcpServerOverHttp(
     if (url.pathname !== mcpPath) {
       return new Response("Not Found", { status: 404 });
     }
-    const server = createLolTrackerMcpServer(db);
-    const transport = new WebStandardStreamableHTTPServerTransport({
-      enableJsonResponse: true,
-    });
-    try {
-      await server.connect(transport);
-      return await transport.handleRequest(req);
-    } finally {
-      await server.close().catch(() => {});
-    }
+    return handleMcpHttpRequest(db, req);
   };
 
   return await new Promise<HttpServerHandle>((resolve) => {
