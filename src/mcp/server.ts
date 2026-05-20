@@ -1,5 +1,7 @@
+import { serve, type ServerType } from "@hono/node-server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
 import type { DB } from "../db/connect.js";
 import { getLeaderboards } from "../db/leaderboard-queries.js";
@@ -266,4 +268,61 @@ export async function runMcpServerOverStdio(db: DB): Promise<void> {
   const server = createLolTrackerMcpServer(db);
   const transport = new StdioServerTransport();
   await server.connect(transport);
+}
+
+export interface HttpServerHandle {
+  server: ServerType;
+  port: number;
+  url: string;
+  close: () => Promise<void>;
+}
+
+/**
+ * Stateless MCP-over-HTTP. A fresh transport + server is spun up per request
+ * (the SDK forbids reusing a stateless transport across requests because
+ * message IDs would collide). Server construction is cheap — just schema
+ * registration — so this is fine for a small hosted MCP and avoids the
+ * session-tracking bookkeeping a stateful deployment would need.
+ */
+export async function runMcpServerOverHttp(
+  db: DB,
+  opts: { port: number; host?: string; path?: string },
+): Promise<HttpServerHandle> {
+  const mcpPath = opts.path ?? "/mcp";
+  const host = opts.host ?? "127.0.0.1";
+
+  const fetchHandler = async (req: Request): Promise<Response> => {
+    const url = new URL(req.url);
+    if (url.pathname === "/health") {
+      return new Response("ok", { status: 200 });
+    }
+    if (url.pathname !== mcpPath) {
+      return new Response("Not Found", { status: 404 });
+    }
+    const server = createLolTrackerMcpServer(db);
+    const transport = new WebStandardStreamableHTTPServerTransport({
+      enableJsonResponse: true,
+    });
+    try {
+      await server.connect(transport);
+      return await transport.handleRequest(req);
+    } finally {
+      await server.close().catch(() => {});
+    }
+  };
+
+  return await new Promise<HttpServerHandle>((resolve) => {
+    const httpServer = serve({ fetch: fetchHandler, port: opts.port, hostname: host }, (info) => {
+      const url = `http://${host}:${info.port}${mcpPath}`;
+      resolve({
+        server: httpServer,
+        port: info.port,
+        url,
+        close: () =>
+          new Promise<void>((res, rej) => {
+            httpServer.close((err) => (err ? rej(err) : res()));
+          }),
+      });
+    });
+  });
 }
