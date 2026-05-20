@@ -2,10 +2,29 @@ import { serve, type ServerType } from "@hono/node-server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { DB } from "../db/connect.js";
 import { getLeaderboards } from "../db/leaderboard-queries.js";
-import { getProfileData } from "../db/profile-queries.js";
+import {
+  FLEX_QUEUE,
+  SOLO_QUEUE,
+  compressRankHistory,
+  countChampionStats,
+  countMastery,
+  countRecentMatches,
+  getChampionStats,
+  getCurrentSoloRank,
+  getHeadline,
+  getImprovementSignals,
+  getLatestGameVersion,
+  getMasteryTop,
+  getRankHistory,
+  getRecentMatches,
+  getRoleStats,
+  summarizeRecentMatch,
+  type Paginated,
+} from "../db/profile-queries.js";
 import {
   listPlayers,
   queryMatchDetail,
@@ -13,6 +32,7 @@ import {
   queryTimeline,
   type TimelineFilter,
 } from "../db/queries.js";
+import { players } from "../db/schema.js";
 import { parseSince, resolveQueueFilter } from "../lib/queues.js";
 
 /**
@@ -92,6 +112,21 @@ function jsonResult(value: unknown) {
   };
 }
 
+function pageOf<T>(
+  items: T[],
+  totalCount: number,
+  offset: number,
+  limit: number,
+): Paginated<T> {
+  const hasMore = offset + items.length < totalCount;
+  return {
+    items,
+    totalCount,
+    hasMore,
+    nextOffset: hasMore ? offset + items.length : null,
+  };
+}
+
 const READONLY_SQL = /^\s*(select|with)\b/i;
 const FORBIDDEN_SQL = /\b(insert|update|delete|drop|alter|attach|detach|create|replace|pragma|vacuum|reindex)\b/i;
 
@@ -152,20 +187,112 @@ export function createLolTrackerMcpServer(db: DB): McpServer {
     },
   );
 
+  const PROFILE_SECTIONS = [
+    "headline",
+    "currentRank",
+    "rankHistory",
+    "roles",
+    "champions",
+    "mastery",
+    "recentMatches",
+    "improvementSignals",
+  ] as const;
+  const DEFAULT_PROFILE_INCLUDE = [
+    "headline",
+    "currentRank",
+    "roles",
+    "champions",
+    "recentMatches",
+    "improvementSignals",
+  ] as const;
+
   server.registerTool(
     "get_player_profile",
     {
       description:
-        "Per-player aggregate: current solo rank, headline winrate/KDA, rank history (solo + flex), role distribution, top champions, top mastery, and recent matches.",
+        "Per-player aggregate. Returns a lean default set (headline winrate/KDA, current solo rank, role distribution, top 5 champions, last 5 matches as summaries, and a pre-computed improvementSignals block). Use `include` to opt sections in/out, per-section `*Limit`/`*Offset` to page through, and `recentMatchesDetail`/`rankHistoryDetail` to switch to full rows when needed. For pointed questions ('last game played', 'who did Mangirdas duo with last week') prefer `query_sql` — it's faster and never overflows.",
       inputSchema: {
         player: z
           .string()
           .describe("PUUID, displayName, or gameName (substring). Must resolve to exactly one player."),
         since: z.string().optional().describe("Limit aggregates to this window (e.g. '30d')."),
         queue: z.string().optional().describe("Queue filter (see query_timeline)."),
+        include: z
+          .array(z.enum(PROFILE_SECTIONS))
+          .optional()
+          .describe(
+            `Sections to include. Default: ${DEFAULT_PROFILE_INCLUDE.join(", ")}. ` +
+              `Available: ${PROFILE_SECTIONS.join(", ")}. ` +
+              "rankHistory and mastery are off by default because they're the largest sections.",
+          ),
+        recentMatchesLimit: z
+          .number()
+          .int()
+          .positive()
+          .max(100)
+          .optional()
+          .describe("Page size for recentMatches (default 10)."),
+        recentMatchesOffset: z
+          .number()
+          .int()
+          .nonnegative()
+          .optional()
+          .describe("Skip this many recentMatches before returning (default 0)."),
+        recentMatchesDetail: z
+          .enum(["summary", "full"])
+          .optional()
+          .describe(
+            "summary (default) = champ/role/KDA/win/duration/queue only. full = every projected column including item & perk IDs. Use `get_match` for opponent rows.",
+          ),
+        championLimit: z
+          .number()
+          .int()
+          .positive()
+          .max(200)
+          .optional()
+          .describe("Page size for champions (default 5)."),
+        championOffset: z
+          .number()
+          .int()
+          .nonnegative()
+          .optional()
+          .describe("Skip this many champion rows before returning (default 0)."),
+        masteryLimit: z
+          .number()
+          .int()
+          .positive()
+          .max(200)
+          .optional()
+          .describe("Page size for mastery (default 5)."),
+        masteryOffset: z
+          .number()
+          .int()
+          .nonnegative()
+          .optional()
+          .describe("Skip this many mastery rows before returning (default 0)."),
+        rankHistoryDetail: z
+          .enum(["compressed", "full"])
+          .optional()
+          .describe(
+            "compressed (default) emits only snapshots where tier/division/LP changed plus first+last. full emits every poll snapshot — can be thousands of rows for an active player.",
+          ),
       },
     },
-    async ({ player, since, queue }) => {
+    async (args) => {
+      const {
+        player,
+        since,
+        queue,
+        include,
+        recentMatchesLimit,
+        recentMatchesOffset,
+        recentMatchesDetail,
+        championLimit,
+        championOffset,
+        masteryLimit,
+        masteryOffset,
+        rankHistoryDetail,
+      } = args;
       const puuids = resolvePuuids(db, { players: [player] });
       if (!puuids || puuids.length !== 1) {
         return {
@@ -181,18 +308,80 @@ export function createLolTrackerMcpServer(db: DB): McpServer {
           isError: true,
         };
       }
+      const puuid = puuids[0]!;
+      const playerRow = db.select().from(players).where(eq(players.puuid, puuid)).get();
+      if (!playerRow) {
+        return {
+          content: [{ type: "text" as const, text: `Player ${puuid} not found.` }],
+          isError: true,
+        };
+      }
+
       const sinceMs = parseSince(since);
       const queueIds = resolveQueueFilter(queue);
       const opts: { sinceMs?: number; queueIds?: number[] } = {};
       if (sinceMs !== undefined) opts.sinceMs = sinceMs;
       if (queueIds) opts.queueIds = queueIds;
-      const profile = getProfileData(db, puuids[0]!, opts);
-      if (!profile) {
-        return {
-          content: [{ type: "text" as const, text: `Player ${puuids[0]} not found.` }],
-          isError: true,
-        };
+
+      const want = new Set<(typeof PROFILE_SECTIONS)[number]>(
+        include && include.length > 0 ? include : DEFAULT_PROFILE_INCLUDE,
+      );
+      const detail = recentMatchesDetail ?? "summary";
+      const matchesLimit = recentMatchesLimit ?? 10;
+      const matchesOffset = recentMatchesOffset ?? 0;
+      const champLimit = championLimit ?? 5;
+      const champOffset = championOffset ?? 0;
+      const mLimit = masteryLimit ?? 5;
+      const mOffset = masteryOffset ?? 0;
+      const rankMode = rankHistoryDetail ?? "compressed";
+
+      const profile: Record<string, unknown> = { player: playerRow };
+      profile["latestGameVersion"] = getLatestGameVersion(db, puuid, opts);
+
+      if (want.has("headline")) profile["headline"] = getHeadline(db, puuid, opts);
+
+      if (want.has("currentRank")) profile["currentSoloRank"] = getCurrentSoloRank(db, puuid);
+
+      if (want.has("rankHistory")) {
+        const solo = getRankHistory(db, puuid, SOLO_QUEUE);
+        const flex = getRankHistory(db, puuid, FLEX_QUEUE);
+        profile["rankHistorySolo"] =
+          rankMode === "full" ? solo : compressRankHistory(solo);
+        profile["rankHistoryFlex"] =
+          rankMode === "full" ? flex : compressRankHistory(flex);
+        profile["rankHistoryDetail"] = rankMode;
+        if (rankMode === "compressed") {
+          profile["rankHistoryRawCounts"] = { solo: solo.length, flex: flex.length };
+        }
       }
+
+      if (want.has("roles"))
+        profile["roleStats"] = getRoleStats(db, puuid, opts).sort((a, b) => b.games - a.games);
+
+      if (want.has("champions")) {
+        const items = getChampionStats(db, puuid, opts, champLimit, champOffset);
+        const totalCount = countChampionStats(db, puuid, opts);
+        profile["championStats"] = pageOf(items, totalCount, champOffset, champLimit);
+      }
+
+      if (want.has("mastery")) {
+        const items = getMasteryTop(db, puuid, mLimit, mOffset);
+        const totalCount = countMastery(db, puuid);
+        profile["masteryTop"] = pageOf(items, totalCount, mOffset, mLimit);
+      }
+
+      if (want.has("recentMatches")) {
+        const rows = getRecentMatches(db, puuid, opts, matchesLimit, matchesOffset);
+        const totalCount = countRecentMatches(db, puuid, opts);
+        const items: unknown[] = detail === "full" ? rows : rows.map(summarizeRecentMatch);
+        profile["recentMatches"] = pageOf(items, totalCount, matchesOffset, matchesLimit);
+        profile["recentMatchesDetail"] = detail;
+      }
+
+      if (want.has("improvementSignals"))
+        profile["improvementSignals"] = getImprovementSignals(db, puuid, opts);
+
+      profile["included"] = [...want];
       return jsonResult(profile);
     },
   );

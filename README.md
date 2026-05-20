@@ -217,7 +217,7 @@ Tools exposed:
 - `list_players` — every tracked Riot ID with ingest cursors.
 - `query_timeline` / `query_parties` — chronological match feed (per-row or grouped by team), filters: `since` (`7d`/`12h`), `sinceMs`/`untilMs`, `players` (substring), `puuids`, `queue` (`soloq`/`flex`/`ranked`/`normal`/`aram`/`arena`/numeric), `limit`.
 - `get_match` — full per-participant breakdown of a match (both teams, opponents included).
-- `get_player_profile` — current rank, winrate/KDA headline, rank history, role/champion stats, top mastery, recent matches.
+- `get_player_profile` — per-player aggregate, lean by default. Pick sections with `include` (`headline`, `currentRank`, `rankHistory`, `roles`, `champions`, `mastery`, `recentMatches`, `improvementSignals`); paginate `recentMatches`/`champions`/`mastery` via `*Limit`/`*Offset`; flip `recentMatchesDetail` to `full` for item & perk IDs; flip `rankHistoryDetail` to `full` for raw polls. Default response is the headline + current rank + roles + top 5 champions + last 5 matches (summary) + `improvementSignals` (worst/best role and champ, surrender rate, deaths trend, last-10 form). For pointed questions ("last game played", "who did X duo with last week") prefer `query_sql` — it's faster and never overflows.
 - `get_leaderboards` — group-wide winrate, KDA, CS/min, vision, damage, gold, objectives, surrender rate.
 - `query_sql` — read-only `SELECT`/`WITH` escape hatch (mutating statements rejected).
 
