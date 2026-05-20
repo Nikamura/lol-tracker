@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, lte, sql, type SQL } from "drizzle-orm";
 import type { Platform, Region } from "../config.js";
 import type {
   ChampionMastery,
@@ -408,6 +408,7 @@ export interface TimelineRow {
 
 export interface TimelineFilter {
   sinceMs?: number;
+  untilMs?: number;
   puuids?: string[];
   queueIds?: number[];
   limit?: number;
@@ -642,6 +643,7 @@ export function queryMatchDetail(db: DB, matchId: string): MatchDetail | undefin
 export function queryTimeline(db: DB, f: TimelineFilter = {}): TimelineRow[] {
   const conds: SQL[] = [notRemakeCond()];
   if (f.sinceMs !== undefined) conds.push(gte(matches.gameStart, f.sinceMs));
+  if (f.untilMs !== undefined) conds.push(lt(matches.gameStart, f.untilMs));
   if (f.puuids?.length) conds.push(inArray(matchParticipants.puuid, f.puuids));
   if (f.queueIds?.length) conds.push(inArray(matches.queueId, f.queueIds));
 

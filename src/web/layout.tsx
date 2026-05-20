@@ -110,6 +110,7 @@ const Masthead: FC<{ active?: string | undefined; refreshState: RefreshState | n
       {/* Navigation row */}
       <nav class="flex items-stretch gap-px overflow-x-auto border-t border-border/40">
         <NavLink href="/" label="Timeline" active={active === "timeline"} />
+        <NavLink href="/daily" label="Daily" active={active === "daily"} />
         <NavLink href="/leaderboards" label="Leaderboards" active={active === "leaderboards"} />
         <NavLink href="/streaks" label="Streaks" active={active === "streaks"} />
         <NavLink href="/heatmaps" label="Heatmaps" active={active === "heatmaps"} />
