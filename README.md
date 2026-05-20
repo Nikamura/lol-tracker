@@ -43,6 +43,7 @@ Dev-key rate limits: 20 req/s · 100 req / 2 min. The client honours both with a
 | `rekey [--dry-run] [--rewrite-json] [--verbose]` | Rotate PUUIDs after a Riot API key change. Re-resolves every tracked Riot ID and updates every table keyed on PUUID. |
 | `serve [--port 5173] [--poll-interval 600] [--backfill-days 7] [--skip-initial-poll]` | Run the web UI **and** auto-poll on an interval. Container default. |
 | `timeline [--since 7d] [--player <n>] [--queue <q>] [--limit 100]` | Chronological feed across everyone. |
+| `mcp` | Speak MCP over stdio so an AI client (Claude Desktop, etc.) can query the local DB. |
 
 `--platform` is the Riot platform code: `euw1`, `eun1`, `na1`, `kr`, `jp1`, `oc1`, `br1`, `la1`, `la2`, `tr1`, `ru`, `ph2`, `sg2`, `th2`, `tw2`, `vn2`.
 
@@ -204,6 +205,36 @@ every table inside a single SQLite transaction (with `PRAGMA defer_foreign_keys`
 to satisfy the FKs on `players.puuid`). A SHA-256 fingerprint of the API key
 is stored in `meta` so `poll` refuses to run, and `serve` disables auto-poll,
 until `rekey` has caught up with the new key.
+
+## MCP server
+
+`lol-tracker mcp` runs an [MCP](https://modelcontextprotocol.io) server over stdio so an LLM client (Claude Desktop, IDE plugins, etc.) can query the local SQLite directly. Tools exposed:
+
+- `list_players` — every tracked Riot ID with ingest cursors.
+- `query_timeline` / `query_parties` — chronological match feed (per-row or grouped by team), filters: `since` (`7d`/`12h`), `sinceMs`/`untilMs`, `players` (substring), `puuids`, `queue` (`soloq`/`flex`/`ranked`/`normal`/`aram`/`arena`/numeric), `limit`.
+- `get_match` — full per-participant breakdown of a match (both teams, opponents included).
+- `get_player_profile` — current rank, winrate/KDA headline, rank history, role/champion stats, top mastery, recent matches.
+- `get_leaderboards` — group-wide winrate, KDA, CS/min, vision, damage, gold, objectives, surrender rate.
+- `query_sql` — read-only `SELECT`/`WITH` escape hatch (mutating statements rejected).
+
+Wire it into Claude Desktop's `claude_desktop_config.json`:
+
+```jsonc
+{
+  "mcpServers": {
+    "lol-tracker": {
+      "command": "node",
+      "args": ["/opt/lol-tracker/dist/cli.js", "mcp"],
+      "env": {
+        "RIOT_API_KEY": "RGAPI-…",
+        "LOL_TRACKER_DB": "/opt/lol-tracker/data/lol-tracker.db"
+      }
+    }
+  }
+}
+```
+
+(`RIOT_API_KEY` is only consumed by `loadEnv` — the MCP server never calls Riot, it just reads the DB. Set it to any non-empty string if you're pointing at a read-only copy.)
 
 ## Roadmap (v2)
 
