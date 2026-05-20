@@ -13,6 +13,7 @@ import {
   type TimelineFilter,
 } from "../db/queries.js";
 import { getProfileData } from "../db/profile-queries.js";
+import { handleMcpHttpRequest } from "../mcp/server.js";
 import { getLeaderboards } from "../db/leaderboard-queries.js";
 import { streaksForAll } from "../db/streak-queries.js";
 import { heatmapData } from "../db/heatmap-queries.js";
@@ -432,6 +433,8 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
     return c.body(xml, 200, { "Content-Type": "application/xml; charset=utf-8" });
   });
+
+  app.all("/mcp", (c) => handleMcpHttpRequest(db, c.req.raw));
 
   return app;
 }

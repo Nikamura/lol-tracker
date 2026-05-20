@@ -43,6 +43,7 @@ Dev-key rate limits: 20 req/s · 100 req / 2 min. The client honours both with a
 | `rekey [--dry-run] [--rewrite-json] [--verbose]` | Rotate PUUIDs after a Riot API key change. Re-resolves every tracked Riot ID and updates every table keyed on PUUID. |
 | `serve [--port 5173] [--poll-interval 600] [--backfill-days 7] [--skip-initial-poll]` | Run the web UI **and** auto-poll on an interval. Container default. |
 | `timeline [--since 7d] [--player <n>] [--queue <q>] [--limit 100]` | Chronological feed across everyone. |
+| `mcp [--port 3333] [--host 127.0.0.1] [--stdio]` | Stand-alone MCP server (HTTP by default, `--stdio` for desktop clients). Read-only — no Riot key needed. `serve` also mounts `/mcp` automatically. |
 
 `--platform` is the Riot platform code: `euw1`, `eun1`, `na1`, `kr`, `jp1`, `oc1`, `br1`, `la1`, `la2`, `tr1`, `ru`, `ph2`, `sg2`, `th2`, `tw2`, `vn2`.
 
@@ -204,6 +205,60 @@ every table inside a single SQLite transaction (with `PRAGMA defer_foreign_keys`
 to satisfy the FKs on `players.puuid`). A SHA-256 fingerprint of the API key
 is stored in `meta` so `poll` refuses to run, and `serve` disables auto-poll,
 until `rekey` has caught up with the new key.
+
+## MCP server
+
+The `serve` command exposes an [MCP](https://modelcontextprotocol.io) endpoint at `POST /mcp` alongside the web UI — so the existing homelab container already hosts it (`http://<host>:5173/mcp`) with no extra config. `lol-tracker mcp` is also available as a stand-alone process for non-`serve` deployments.
+
+The server reads the local SQLite — it never calls Riot, so it doesn't need an API key.
+
+Tools exposed:
+
+- `list_players` — every tracked Riot ID with ingest cursors.
+- `query_timeline` / `query_parties` — chronological match feed (per-row or grouped by team), filters: `since` (`7d`/`12h`), `sinceMs`/`untilMs`, `players` (substring), `puuids`, `queue` (`soloq`/`flex`/`ranked`/`normal`/`aram`/`arena`/numeric), `limit`.
+- `get_match` — full per-participant breakdown of a match (both teams, opponents included).
+- `get_player_profile` — current rank, winrate/KDA headline, rank history, role/champion stats, top mastery, recent matches.
+- `get_leaderboards` — group-wide winrate, KDA, CS/min, vision, damage, gold, objectives, surrender rate.
+- `query_sql` — read-only `SELECT`/`WITH` escape hatch (mutating statements rejected).
+
+### Add to an AI client (HTTP)
+
+Point any MCP-over-HTTP client at the `serve` container:
+
+```jsonc
+{
+  "mcpServers": {
+    "lol-tracker": { "url": "http://homelab.lan:5173/mcp" }
+  }
+}
+```
+
+The transport is stateless (no session ID; safe behind a plain reverse proxy). **There's no auth on `/mcp`** — keep it on a trusted network, or front it with whatever you already use for the web UI.
+
+### Stand-alone hosting
+
+If you don't want the web UI (or want MCP on its own port), run the server directly:
+
+```bash
+pnpm dev mcp                              # → http://127.0.0.1:3333/mcp
+pnpm dev mcp --port 3333 --host 0.0.0.0   # bind all interfaces
+```
+
+A `GET /health` endpoint returns `ok` for uptime checks.
+
+### Local (stdio)
+
+```jsonc
+{
+  "mcpServers": {
+    "lol-tracker": {
+      "command": "node",
+      "args": ["/opt/lol-tracker/dist/cli.js", "mcp", "--stdio"],
+      "env": { "LOL_TRACKER_DB": "/opt/lol-tracker/data/lol-tracker.db" }
+    }
+  }
+}
+```
 
 ## Roadmap (v2)
 

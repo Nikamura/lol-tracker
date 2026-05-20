@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.0.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^11.5.0",
     "citty": "^0.1.6",
     "cli-table3": "^0.6.5",
