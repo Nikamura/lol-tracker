@@ -11,8 +11,20 @@ import {
   type PlayerMasteryRow,
 } from "./schema.js";
 
-const SOLO_QUEUE = "RANKED_SOLO_5x5";
-const FLEX_QUEUE = "RANKED_FLEX_SR";
+export const SOLO_QUEUE = "RANKED_SOLO_5x5";
+export const FLEX_QUEUE = "RANKED_FLEX_SR";
+
+/**
+ * Generic shape for paginated list sections. The MCP tool returns these so an
+ * agent can decide whether to ask for more rows. `hasMore` is the cheap signal
+ * to look for; `nextOffset` is convenient to plumb straight back in.
+ */
+export interface Paginated<T> {
+  items: T[];
+  totalCount: number;
+  hasMore: boolean;
+  nextOffset: number | null;
+}
 
 /**
  * Tier rank table used to make `tier + division + LP` sortable / chartable
@@ -146,6 +158,58 @@ export interface ProfileRecentMatch {
   teamEarlySurrendered: boolean | null;
 }
 
+/**
+ * Trimmed recent-match shape for clients that just need the headline numbers
+ * (champ / role / KDA / win / duration / queue). Drops item & perk IDs since
+ * they're not useful without a static-data join. Call `get_match` for the full
+ * breakdown when needed.
+ */
+export interface ProfileRecentMatchSummary {
+  matchId: string;
+  gameStart: number;
+  gameDuration: number;
+  queueId: number;
+  gameMode: string;
+  championName: string;
+  teamPosition: string | null;
+  win: boolean;
+  kills: number;
+  deaths: number;
+  assists: number;
+  kda: number;
+  cs: number | null;
+  goldEarned: number | null;
+  visionScore: number | null;
+  gameEndedInSurrender: boolean | null;
+  teamEarlySurrendered: boolean | null;
+}
+
+/**
+ * Pre-computed analysis block. Saves the caller from re-deriving the same
+ * "where is this player losing games" answers from raw rows every time.
+ */
+export interface ImprovementSignals {
+  windowGames: number;
+  worstWinrateRole:
+    | { position: string; games: number; wins: number; winrate: number }
+    | null;
+  bestWinrateRole:
+    | { position: string; games: number; wins: number; winrate: number }
+    | null;
+  worstWinrateChampion:
+    | { championId: number; championName: string; games: number; wins: number; winrate: number }
+    | null;
+  bestWinrateChampion:
+    | { championId: number; championName: string; games: number; wins: number; winrate: number }
+    | null;
+  surrenderRate: number; // 0..1 of games that ended in surrender (either side)
+  earlySurrenderRate: number; // 0..1 of games where the player's team early-surrendered
+  avgDeathsRecent: number; // last min(5, N) games
+  avgDeathsPrior: number; // games 6..15 (or fewer if not enough history)
+  avgDeathsDelta: number; // recent - prior (positive = trending worse)
+  last10Form: { wins: number; losses: number; winrate: number } | null;
+}
+
 export interface CurrentRank {
   queueType: string;
   tier: string;
@@ -174,7 +238,7 @@ export interface ProfileQueryOpts {
   queueIds?: number[] | undefined;
 }
 
-function getCurrentSoloRank(db: DB, puuid: string): CurrentRank | undefined {
+export function getCurrentSoloRank(db: DB, puuid: string): CurrentRank | undefined {
   const row = db
     .select({
       queueType: playerRankSnapshots.queueType,
@@ -207,7 +271,7 @@ function getCurrentSoloRank(db: DB, puuid: string): CurrentRank | undefined {
   };
 }
 
-function getRankHistory(
+export function getRankHistory(
   db: DB,
   puuid: string,
   queueType: string,
@@ -244,7 +308,36 @@ function getRankHistory(
   return out;
 }
 
-function getHeadline(
+/**
+ * Collapse a rank-history series to only the snapshots where tier / division /
+ * LP changed, keeping the first and last as anchors. A long flat stretch
+ * (e.g. 4,500 snapshots sitting at G2 72 LP because polls keep happening but
+ * the player isn't queueing) collapses to two rows.
+ */
+export function compressRankHistory(points: RankSnapshotPoint[]): RankSnapshotPoint[] {
+  if (points.length <= 2) return points;
+  const out: RankSnapshotPoint[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i]!;
+    if (i === 0 || i === points.length - 1) {
+      out.push(p);
+      continue;
+    }
+    const prev = points[i - 1]!;
+    if (
+      prev.tier !== p.tier ||
+      prev.division !== p.division ||
+      prev.leaguePoints !== p.leaguePoints
+    ) {
+      out.push(p);
+    }
+  }
+  // De-dupe the case where index 0 and index 1 happen to be the same point
+  // (single change followed by `last` flush).
+  return out;
+}
+
+export function getHeadline(
   db: DB,
   puuid: string,
   opts: ProfileQueryOpts,
@@ -299,7 +392,7 @@ function getHeadline(
   };
 }
 
-function getRoleStats(
+export function getRoleStats(
   db: DB,
   puuid: string,
   opts: ProfileQueryOpts,
@@ -334,11 +427,12 @@ function getRoleStats(
     });
 }
 
-function getChampionStats(
+export function getChampionStats(
   db: DB,
   puuid: string,
   opts: ProfileQueryOpts,
   limit: number,
+  offset = 0,
 ): ChampionStat[] {
   const conds = [eq(matchParticipants.puuid, puuid), notRemakeCond()];
   if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
@@ -360,6 +454,7 @@ function getChampionStats(
     .groupBy(matchParticipants.championId, matchParticipants.championName)
     .orderBy(desc(sql<number>`COUNT(*)`))
     .limit(limit)
+    .offset(offset)
     .all();
 
   return rows.map((r) => {
@@ -383,13 +478,32 @@ function getChampionStats(
   });
 }
 
-function getMasteryTop(db: DB, puuid: string, limit: number): MasteryStat[] {
+export function countChampionStats(
+  db: DB,
+  puuid: string,
+  opts: ProfileQueryOpts,
+): number {
+  const conds = [eq(matchParticipants.puuid, puuid), notRemakeCond()];
+  if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
+  if (opts.queueIds?.length) conds.push(inArray(matches.queueId, opts.queueIds));
+
+  const row = db
+    .select({ n: sql<number>`COUNT(DISTINCT ${matchParticipants.championId})` })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
+    .where(and(...conds))
+    .get();
+  return row?.n ?? 0;
+}
+
+export function getMasteryTop(db: DB, puuid: string, limit: number, offset = 0): MasteryStat[] {
   const rows: PlayerMasteryRow[] = db
     .select()
     .from(playerMastery)
     .where(eq(playerMastery.puuid, puuid))
     .orderBy(desc(playerMastery.championPoints))
     .limit(limit)
+    .offset(offset)
     .all();
   return rows.map((r) => ({
     championId: r.championId,
@@ -399,11 +513,21 @@ function getMasteryTop(db: DB, puuid: string, limit: number): MasteryStat[] {
   }));
 }
 
-function getRecentMatches(
+export function countMastery(db: DB, puuid: string): number {
+  const row = db
+    .select({ n: sql<number>`COUNT(*)` })
+    .from(playerMastery)
+    .where(eq(playerMastery.puuid, puuid))
+    .get();
+  return row?.n ?? 0;
+}
+
+export function getRecentMatches(
   db: DB,
   puuid: string,
   opts: ProfileQueryOpts,
   limit: number,
+  offset = 0,
 ): ProfileRecentMatch[] {
   const conds = [eq(matchParticipants.puuid, puuid), notRemakeCond()];
   if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
@@ -454,10 +578,61 @@ function getRecentMatches(
     .where(and(...conds))
     .orderBy(desc(matches.gameStart))
     .limit(limit)
+    .offset(offset)
     .all();
 }
 
-function getLatestGameVersion(
+export function countRecentMatches(
+  db: DB,
+  puuid: string,
+  opts: ProfileQueryOpts,
+): number {
+  const conds = [eq(matchParticipants.puuid, puuid), notRemakeCond()];
+  if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
+  if (opts.queueIds?.length) conds.push(inArray(matches.queueId, opts.queueIds));
+  const row = db
+    .select({ n: sql<number>`COUNT(*)` })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
+    .where(and(...conds))
+    .get();
+  return row?.n ?? 0;
+}
+
+/**
+ * Project a full participant row down to the headline fields a coaching agent
+ * actually reads. Drops item & perk IDs (useless without static-data) and the
+ * pentakill / first-blood splash flags — `get_match` is the right tool when
+ * those matter.
+ */
+export function summarizeRecentMatch(m: ProfileRecentMatch): ProfileRecentMatchSummary {
+  const cs =
+    m.totalMinionsKilled != null || m.neutralMinionsKilled != null
+      ? (m.totalMinionsKilled ?? 0) + (m.neutralMinionsKilled ?? 0)
+      : null;
+  const kda = m.deaths > 0 ? (m.kills + m.assists) / m.deaths : m.kills + m.assists;
+  return {
+    matchId: m.matchId,
+    gameStart: m.gameStart,
+    gameDuration: m.gameDuration,
+    queueId: m.queueId,
+    gameMode: m.gameMode,
+    championName: m.championName,
+    teamPosition: m.teamPosition,
+    win: m.win,
+    kills: m.kills,
+    deaths: m.deaths,
+    assists: m.assists,
+    kda,
+    cs,
+    goldEarned: m.goldEarned,
+    visionScore: m.visionScore,
+    gameEndedInSurrender: m.gameEndedInSurrender,
+    teamEarlySurrendered: m.teamEarlySurrendered,
+  };
+}
+
+export function getLatestGameVersion(
   db: DB,
   puuid: string,
   opts: ProfileQueryOpts,
@@ -521,6 +696,102 @@ export function getProfileData(
     championStats,
     masteryTop,
     recentMatches,
+  };
+}
+
+/**
+ * Roll up the "where is this player leaking games" answers so a coaching agent
+ * doesn't have to re-derive them from raw rows. Filters apply via `opts`
+ * (since / queue) the same way every other section does.
+ *
+ * Heuristics:
+ *  - Worst / best role: needs >=3 games to surface.
+ *  - Worst / best champion: needs >=2 games to surface (matches the user's spec).
+ *  - Surrender / early-surrender rate: across the window.
+ *  - Deaths trend: avg deaths in the last min(5, N) games vs the 10 games
+ *    before that (or fewer if the player hasn't played that much).
+ *  - last10Form: W/L of the most-recent 10 games (or fewer).
+ */
+export function getImprovementSignals(
+  db: DB,
+  puuid: string,
+  opts: ProfileQueryOpts,
+): ImprovementSignals {
+  const headline = getHeadline(db, puuid, opts);
+  const windowGames = headline.games;
+
+  const roles = getRoleStats(db, puuid, opts).filter((r) => r.games >= 3);
+  const champRows = getChampionStats(db, puuid, opts, 1_000_000);
+  const champs = champRows.filter((c) => c.games >= 2);
+
+  const sortByWr = <T extends { winrate: number; games: number }>(rows: T[], dir: "asc" | "desc") =>
+    [...rows].sort((a, b) => (dir === "asc" ? a.winrate - b.winrate : b.winrate - a.winrate) || b.games - a.games);
+
+  const worstRole = roles.length ? sortByWr(roles, "asc")[0]! : null;
+  const bestRole = roles.length ? sortByWr(roles, "desc")[0]! : null;
+  const worstChamp = champs.length ? sortByWr(champs, "asc")[0]! : null;
+  const bestChamp = champs.length ? sortByWr(champs, "desc")[0]! : null;
+
+  const conds = [eq(matchParticipants.puuid, puuid), notRemakeCond()];
+  if (opts.sinceMs !== undefined) conds.push(gte(matches.gameStart, opts.sinceMs));
+  if (opts.queueIds?.length) conds.push(inArray(matches.queueId, opts.queueIds));
+
+  const surrenderRow = db
+    .select({
+      surrenderedGames: sql<number>`SUM(CASE WHEN ${matchParticipants.gameEndedInSurrender} THEN 1 ELSE 0 END)`,
+      earlySurrenderGames: sql<number>`SUM(CASE WHEN ${matchParticipants.teamEarlySurrendered} THEN 1 ELSE 0 END)`,
+    })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
+    .where(and(...conds))
+    .get();
+
+  const surrenderRate = windowGames > 0 ? (surrenderRow?.surrenderedGames ?? 0) / windowGames : 0;
+  const earlySurrenderRate =
+    windowGames > 0 ? (surrenderRow?.earlySurrenderGames ?? 0) / windowGames : 0;
+
+  const recent15 = db
+    .select({
+      deaths: matchParticipants.deaths,
+      win: matchParticipants.win,
+      gameStart: matches.gameStart,
+    })
+    .from(matchParticipants)
+    .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
+    .where(and(...conds))
+    .orderBy(desc(matches.gameStart))
+    .limit(15)
+    .all();
+
+  const recent5 = recent15.slice(0, 5);
+  const prior10 = recent15.slice(5, 15);
+  const avgDeathsRecent =
+    recent5.length > 0 ? recent5.reduce((s, r) => s + (r.deaths ?? 0), 0) / recent5.length : 0;
+  const avgDeathsPrior =
+    prior10.length > 0 ? prior10.reduce((s, r) => s + (r.deaths ?? 0), 0) / prior10.length : 0;
+
+  const recent10 = recent15.slice(0, 10);
+  const last10Form =
+    recent10.length > 0
+      ? {
+          wins: recent10.filter((r) => r.win).length,
+          losses: recent10.filter((r) => !r.win).length,
+          winrate: recent10.filter((r) => r.win).length / recent10.length,
+        }
+      : null;
+
+  return {
+    windowGames,
+    worstWinrateRole: worstRole,
+    bestWinrateRole: bestRole,
+    worstWinrateChampion: worstChamp,
+    bestWinrateChampion: bestChamp,
+    surrenderRate,
+    earlySurrenderRate,
+    avgDeathsRecent,
+    avgDeathsPrior,
+    avgDeathsDelta: avgDeathsRecent - avgDeathsPrior,
+    last10Form,
   };
 }
 
