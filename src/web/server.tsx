@@ -35,6 +35,13 @@ import {
 import { TimelinePage, TimelineRows } from "./pages/timeline.js";
 import { ComparePage, CompareBody } from "./pages/compare.js";
 import { listComparePlayers, pavilionData } from "../db/comparison-queries.js";
+import { DailyPage, DailyBody } from "./pages/daily.js";
+import {
+  dailyComparison,
+  listMultiFriendDays,
+  parseDayKey,
+  startOfDayMs,
+} from "../db/daily-queries.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_ROOT = path.resolve(here, "..", "..", "public");
@@ -115,6 +122,45 @@ function coerceHeatmapsSince(s: string): HeatmapsSince {
 }
 function coerceHeatmapsQueue(q: string): HeatmapsQueue {
   return (HEATMAPS_QUEUE as readonly string[]).includes(q) ? (q as HeatmapsQueue) : "all";
+}
+
+interface DailyView {
+  date: string;
+  data: ReturnType<typeof dailyComparison> | null;
+  fallback: boolean;
+  days: ReturnType<typeof listMultiFriendDays>;
+}
+
+function resolveDailyView(db: DB, rawDate: string | undefined): DailyView {
+  const days = listMultiFriendDays(db);
+  const requested = rawDate ? parseDayKey(rawDate) : null;
+  const todayMs = startOfDayMs(Date.now());
+  const hasToday = days.some((d) => d.dayMs === todayMs);
+
+  // Resolve which day to render.
+  let dayMs: number | null = null;
+  let fallback = false;
+  if (rawDate && requested !== null) {
+    if (days.some((d) => d.dayMs === requested)) {
+      dayMs = requested;
+    } else if (days.length > 0) {
+      dayMs = days[0]!.dayMs;
+      fallback = true;
+    }
+  } else if (!rawDate) {
+    if (hasToday) dayMs = todayMs;
+    else if (days.length > 0) {
+      dayMs = days[0]!.dayMs;
+      fallback = true;
+    }
+  } else if (days.length > 0) {
+    dayMs = days[0]!.dayMs;
+    fallback = true;
+  }
+
+  const data = dayMs !== null ? dailyComparison(db, dayMs) : null;
+  const date = data ? data.dayKey : rawDate ?? "";
+  return { date, data, fallback, days };
 }
 
 export interface CreateAppOptions {
@@ -318,6 +364,36 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
     return c.html(<CompareBody data={data} />);
   });
 
+  app.get("/daily", (c) => {
+    c.set("active", "daily");
+    c.set("seo", {
+      title: "Daily Comparison · lol-tracker",
+      description:
+        "End-of-day banter and awards for the tracked friend group — MVP, Wet Blanket, First Blood, and other positive and negative honors for any day with multi-friend activity.",
+      path: "/daily",
+    });
+    const { date, data, fallback, days } = resolveDailyView(db, c.req.query("date"));
+    return c.render(<DailyPage data={data} filters={{ date }} days={days} fallback={fallback} />);
+  });
+
+  app.get("/fragments/daily", (c) => {
+    const { date, data, fallback } = resolveDailyView(db, c.req.query("date"));
+    c.header("HX-Push-Url", "/daily" + (date ? `?date=${date}` : ""));
+    if (!data) {
+      return c.html(<p class="text-sm italic text-muted-foreground">No multi-friend days yet.</p>);
+    }
+    return c.html(
+      <>
+        {fallback ? (
+          <p class="text-sm italic text-muted-foreground">
+            No multi-friend activity on the requested date. Showing the most recent qualifying day.
+          </p>
+        ) : null}
+        <DailyBody data={data} />
+      </>,
+    );
+  });
+
   app.get("/fragments/heatmaps", (c) => {
     const raw = parseSinceQueue(c.req.query(), "90d");
     const data = heatmapData(db, buildSinceQueueOpts(raw));
@@ -346,6 +422,7 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
       "/streaks",
       "/heatmaps",
       "/compare",
+      "/daily",
       "/players",
       ...players.map((p) => `/players/${p.puuid}`),
     ];
