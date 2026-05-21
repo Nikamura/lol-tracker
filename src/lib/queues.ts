@@ -32,8 +32,15 @@ export function isArena(queueId: number, gameMode: string | undefined | null): b
   return gameMode === "CHERRY";
 }
 
+/**
+ * Ranked Summoner's Rift queues (solo/duo + flex). The daily comparison view
+ * uses this to scope awards and the per-player scoreboard — Arena, ARAM, URF,
+ * normals and co-op are excluded so banter is apples-to-apples.
+ */
+export const RANKED_SR_QUEUE_IDS = [420, 440] as const;
+
 export const QUEUE_GROUPS: Record<string, number[]> = {
-  ranked: [420, 440],
+  ranked: [...RANKED_SR_QUEUE_IDS],
   soloq: [420],
   flex: [440],
   normal: [400, 430, 490],
