@@ -370,7 +370,7 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
     c.set("seo", {
       title: "Daily Comparison · lol-tracker",
       description:
-        "End-of-day banter and awards for the tracked friend group — MVP, Wet Blanket, First Blood, and other positive and negative honors for any day with multi-friend activity.",
+        "End-of-day banter and awards for the tracked friend group, scoped to ranked solo/flex — MVP, Wet Blanket, First Blood and other positive and negative honors for any day with multi-friend ranked activity.",
       path: "/daily",
     });
     const { date, data, fallback, days } = resolveDailyView(db, c.req.query("date"));

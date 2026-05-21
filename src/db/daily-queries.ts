@@ -1,9 +1,20 @@
 import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { RANKED_SR_QUEUE_IDS } from "../lib/queues.js";
 import type { DB } from "./connect.js";
 import { notRemakeCond } from "./match-filters.js";
 import { gatsbyScore } from "./mvp-score.js";
 import { matchParticipants, matches, players } from "./schema.js";
 import { queryParties, type PartyRow } from "./queries.js";
+
+const RANKED_QUEUE_IDS = [...RANKED_SR_QUEUE_IDS];
+
+/**
+ * Daily comparison only scores ranked solo/flex Summoner's Rift. Arena, ARAM,
+ * URF, normals etc. are intentionally excluded — they have wildly different
+ * stat distributions and would warp every award. A player whose only games on
+ * a given day were Arena counts as inactive for that day.
+ */
+const rankedSrCond = () => inArray(matches.queueId, RANKED_QUEUE_IDS);
 
 /**
  * "Day" here is server-local calendar day. We compute the start-of-day in
@@ -60,7 +71,8 @@ export interface DayOption {
 
 /**
  * Days where at least two distinct tracked friends each played a non-remake
- * match. Returned newest-first. Calendar day is server-local TZ.
+ * ranked solo/flex match. Returned newest-first. Calendar day is server-local
+ * TZ. Arena/ARAM/etc. days do not qualify.
  */
 export function listMultiFriendDays(db: DB): DayOption[] {
   const rows = db
@@ -72,7 +84,7 @@ export function listMultiFriendDays(db: DB): DayOption[] {
     .from(matchParticipants)
     .innerJoin(matches, eq(matches.matchId, matchParticipants.matchId))
     .innerJoin(players, eq(players.puuid, matchParticipants.puuid))
-    .where(notRemakeCond())
+    .where(and(notRemakeCond(), rankedSrCond()))
     .all();
 
   interface Acc {
@@ -191,10 +203,11 @@ export interface DailyComparison {
 }
 
 /**
- * Aggregate stats for every tracked friend that played a non-remake game on
- * the given calendar day. Includes Arena (CHERRY) so banter can cover all
- * games — the existing Crown query excludes CHERRY, but for end-of-day awards
- * we want everything the friend group did.
+ * Aggregate stats for every tracked friend that played a non-remake ranked
+ * solo/flex game on the given calendar day. Arena, ARAM, normals and other
+ * modes are filtered out — awards and the scoreboard are scoped to ranked SR
+ * so the comparison stays apples-to-apples, and a friend who only queued
+ * Arena that day is treated as inactive.
  */
 export function dailyComparison(db: DB, dayMs: number): DailyComparison {
   const startMs = startOfDayMs(dayMs);
@@ -248,6 +261,7 @@ export function dailyComparison(db: DB, dayMs: number): DailyComparison {
     .where(
       and(
         notRemakeCond(),
+        rankedSrCond(),
         gte(matches.gameStart, startMs),
         lt(matches.gameStart, endMs),
       ),
@@ -375,8 +389,15 @@ export function dailyComparison(db: DB, dayMs: number): DailyComparison {
     (a, b) => b.mvpScoreSum / Math.max(1, b.games) - a.mvpScoreSum / Math.max(1, a.games),
   );
 
-  // Reuse the existing party grouping logic for rendering match cards.
-  const parties = queryParties(db, { sinceMs: startMs, untilMs: endMs, limit: 200 });
+  // Reuse the existing party grouping logic for rendering match cards. Keep
+  // the queue filter aligned with the stats above so the matches list only
+  // shows what the awards were actually computed from.
+  const parties = queryParties(db, {
+    sinceMs: startMs,
+    untilMs: endMs,
+    queueIds: RANKED_QUEUE_IDS,
+    limit: 200,
+  });
 
   return {
     dayKey: dayKeyOf(startMs),

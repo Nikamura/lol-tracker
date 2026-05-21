@@ -225,9 +225,10 @@ export const DailyPage: FC<DailyPageProps> = ({ data, filters, days, fallback })
             Daily Comparison
           </h1>
           <p class="text-muted-foreground text-sm">
-            End-of-day awards from the friend group. Stats average across the day so one
-            bad game doesn't crown a Wet Blanket. Only days where two or more friends
-            played are shown — pick a day, settle the banter.
+            End-of-day awards from the friend group. Ranked solo/flex only — Arena, ARAM
+            and other queues are excluded so the comparison stays apples-to-apples. Stats
+            average across the day so one bad game doesn't crown a Wet Blanket. Only days
+            where two or more friends played ranked are shown — pick a day, settle the banter.
           </p>
         </div>
       </header>
@@ -287,7 +288,7 @@ export const DailyPage: FC<DailyPageProps> = ({ data, filters, days, fallback })
         ) : (
           <Empty
             title="No multi-friend days yet"
-            description="A day qualifies once two or more tracked friends have each played a match. Keep queuing."
+            description="A day qualifies once two or more tracked friends have each played a ranked solo/flex match. Keep queuing."
           />
         )}
       </div>
