@@ -47,7 +47,7 @@ Dev-key rate limits: 20 req/s · 100 req / 2 min. The client honours both with a
 
 `--platform` is the Riot platform code: `euw1`, `eun1`, `na1`, `kr`, `jp1`, `oc1`, `br1`, `la1`, `la2`, `tr1`, `ru`, `ph2`, `sg2`, `th2`, `tw2`, `vn2`.
 
-`--queue` accepts `soloq`, `flex`, `ranked` (= solo+flex), `normal`, `aram`, `arena`, or a raw numeric queue id.
+`--queue` accepts `soloq`, `flex`, `ranked` (= solo+flex), `normal`, `aram`, `mayhem`, `arena`, or a raw numeric queue id.
 
 `--since` accepts `30m`, `12h`, `7d`.
 
@@ -114,6 +114,12 @@ If anything ever wedges, `pnpm db:reset` wipes the file and the next CLI invocat
 | `match-v5/matches/{id}/timeline` | regional | per-frame events → `match_timelines` (skip with `--skip-timelines`) |
 | `league-v4/entries/by-puuid` | platform | rank snapshot per poll → `player_rank_snapshots` (`--skip-rank`) |
 | `champion-mastery-v4/.../by-puuid` | platform | mastery refresh ≥ 24h apart → `player_mastery` (`--skip-mastery`, `--mastery-stale-hours`) |
+
+The public queue catalog identifies ARAM Mayhem as queue `2400`, so the UI and
+CLI recognize that queue label/filter if Riot returns such a match. Match-V5
+history currently omits Mayhem games, however, and League Classic has no public
+Match-V5 queue/history support. The tracker deliberately does not use local
+League Client APIs, so those games will remain absent until Riot exposes them.
 
 API cost per poll cycle (rough): `N players × (1 list + 1 rank + 1 mastery)` + `M new matches × 2 (match + timeline)`. With a personal-key limit of 100 req / 2 min, an idle group of 5 players costs ~15 req/poll; an active poll picking up 5 new matches per player costs ~65 req/poll (≈80s under the cap).
 
@@ -215,7 +221,7 @@ The server reads the local SQLite — it never calls Riot, so it doesn't need an
 Tools exposed:
 
 - `list_players` — every tracked Riot ID with ingest cursors.
-- `query_timeline` / `query_parties` — chronological match feed (per-row or grouped by team), filters: `since` (`7d`/`12h`), `sinceMs`/`untilMs`, `players` (substring), `puuids`, `queue` (`soloq`/`flex`/`ranked`/`normal`/`aram`/`arena`/numeric), `limit`.
+- `query_timeline` / `query_parties` — chronological match feed (per-row or grouped by team), filters: `since` (`7d`/`12h`), `sinceMs`/`untilMs`, `players` (substring), `puuids`, `queue` (`soloq`/`flex`/`ranked`/`normal`/`aram`/`mayhem`/`arena`/numeric), `limit`.
 - `get_match` — full per-participant breakdown of a match (both teams, opponents included).
 - `get_player_profile` — per-player aggregate, lean by default. Pick sections with `include` (`headline`, `currentRank`, `rankHistory`, `roles`, `champions`, `mastery`, `recentMatches`, `improvementSignals`); paginate `recentMatches`/`champions`/`mastery` via `*Limit`/`*Offset`; flip `recentMatchesDetail` to `full` for item & perk IDs; flip `rankHistoryDetail` to `full` for raw polls. Default response is the headline + current rank + roles + top 5 champions + last 5 matches (summary) + `improvementSignals` (worst/best role and champ, surrender rate, deaths trend, last-10 form). For pointed questions ("last game played", "who did X duo with last week") prefer `query_sql` — it's faster and never overflows.
 - `get_leaderboards` — group-wide winrate, KDA, CS/min, vision, damage, gold, objectives, surrender rate.

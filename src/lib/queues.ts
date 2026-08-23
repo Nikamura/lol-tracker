@@ -14,13 +14,16 @@ export const QUEUE_NAMES: Record<number, string> = {
   1700: "Arena",
   1710: "Arena",
   1900: "URF",
+  2400: "ARAM: Mayhem",
 };
 
 export const GAME_MODE_LABEL: Record<string, string> = {
   CHERRY: "Arena",
   ARAM: "ARAM",
   URF: "URF",
-  CLASSIC: "Classic",
+  // Riot has long used CLASSIC for ordinary Summoner's Rift games. League
+  // Classic is a separate mode and is not currently exposed by Match-V5.
+  CLASSIC: "Summoner's Rift",
 };
 
 export function queueLabel(queueId: number, gameMode: string): string {
@@ -45,6 +48,7 @@ export const QUEUE_GROUPS: Record<string, number[]> = {
   flex: [440],
   normal: [400, 430, 490],
   aram: [450],
+  mayhem: [2400],
   arena: [1700],
 };
 
