@@ -1,49 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="lol-tracker — friend-group LoL match archive">
-  <defs>
-    <radialGradient id="mesh" cx="50%" cy="0%" r="70%">
-      <stop offset="0%" stop-color="#1b3a1f" stop-opacity="0.55"/>
-      <stop offset="60%" stop-color="#0a0f1f" stop-opacity="0"/>
-    </radialGradient>
-    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1c2540" stroke-width="1"/>
-    </pattern>
-  </defs>
-
-  <rect width="1200" height="630" fill="#0a0f1f"/>
-  <rect width="1200" height="630" fill="url(#grid)"/>
-  <rect width="1200" height="630" fill="url(#mesh)"/>
-
-  <!-- top eyebrow bar -->
-  <rect x="0" y="0" width="1200" height="56" fill="#0d1326"/>
-  <line x1="0" y1="56" x2="1200" y2="56" stroke="#1c2540" stroke-width="1"/>
-  <circle cx="64" cy="28" r="6" fill="#b6f244"/>
-  <text x="84" y="34" font-family="'JetBrains Mono', 'Courier New', monospace" font-size="16" fill="#cfd2da" letter-spacing="2">LIVE FEED · FRIEND GROUP RANKED TRACKER</text>
-  <text x="1136" y="34" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="16" fill="#7a8198" letter-spacing="2">v0.1 · EU-WEST · KR · NA</text>
-
-  <!-- masthead -->
-  <g font-family="'Bebas Neue', 'Arial Black', Impact, sans-serif" font-weight="700">
-    <text x="80" y="280" font-size="220" fill="#f5f5ea" letter-spacing="2">LOL</text>
-    <text x="430" y="280" font-size="220" fill="#b6f244" letter-spacing="2">/</text>
-    <text x="510" y="280" font-size="220" fill="#f5f5ea" letter-spacing="2">TRACKER</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs><pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="#1c2940" stroke-width="1"/></pattern><linearGradient id="fade" x2="0" y2="1"><stop stop-color="#b6f244" stop-opacity=".20"/><stop offset="1" stop-color="#b6f244" stop-opacity="0"/></linearGradient></defs>
+  <rect width="1200" height="630" fill="#0a0f1f"/><rect width="1200" height="630" fill="url(#grid)"/>
+  <rect x="56" y="52" width="6" height="25" fill="#b6f244"/>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="78" y="73" fill="#d4dded" font-size="20" letter-spacing="3">YOUR GROUP. EVERY GAME.</text>
+    <text x="56" y="197" fill="#f5f5ea" font-size="92" font-weight="900" letter-spacing="-3">LOL <tspan fill="#b6f244">/</tspan> TRACKER</text>
+    <text x="60" y="252" fill="#c3cede" font-size="28">League of Legends, beyond the scoreboard.</text>
+    <path d="M60 442L170 429 280 452 390 396 500 411 610 359 720 370 830 319 940 328 1050 279 1140 302V492H60Z" fill="url(#fade)"/>
+    <path d="M60 442L170 429 280 452 390 396 500 411 610 359 720 370 830 319 940 328 1050 279 1140 302" fill="none" stroke="#b6f244" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M60 465L170 456 280 432 390 453 500 424 610 438 720 399 830 419 940 382 1050 399 1140 367" fill="none" stroke="#68aefa" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="830" cy="319" r="8" fill="#b6f244" stroke="#0a0f1f" stroke-width="3"/>
+    <rect x="56" y="512" width="1088" height="1" fill="#34405a"/>
+    <text x="60" y="562" fill="#f5f5ea" font-size="20" letter-spacing="1">CHAMPION GRAPHS</text><text x="353" y="562" fill="#f5f5ea" font-size="20" letter-spacing="1">BUILDS &amp; STATS</text><text x="607" y="562" fill="#f5f5ea" font-size="20" letter-spacing="1">MATCH ARCHIVE</text>
+    <text x="1140" y="562" text-anchor="end" fill="#b6f244" font-size="20">lol-tracker</text>
   </g>
-
-  <text x="82" y="330" font-family="'JetBrains Mono', monospace" font-size="22" fill="#9aa1b6" letter-spacing="6">MATCH ARCHIVE  ·  TACTICAL READOUT</text>
-
-  <!-- divider -->
-  <line x1="80" y1="380" x2="1120" y2="380" stroke="#1c2540" stroke-width="2"/>
-
-  <!-- module strip -->
-  <g font-family="'Bebas Neue', 'Arial Black', Impact, sans-serif" font-size="56" fill="#f5f5ea" letter-spacing="3">
-    <text x="80" y="460">TIMELINE</text>
-    <text x="360" y="460">LEADERBOARDS</text>
-    <text x="780" y="460">STREAKS</text>
-    <text x="1000" y="460">HEATMAPS</text>
-  </g>
-
-  <!-- footer description -->
-  <text x="80" y="560" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="26" fill="#cfd2da">Track League of Legends games played by a friend group.</text>
-  <text x="80" y="595" font-family="'IBM Plex Sans', system-ui, sans-serif" font-size="22" fill="#7a8198">Timelines · leaderboards · streaks · play-time heatmaps · per-player profiles</text>
-
-  <!-- right accent slab -->
-  <rect x="1080" y="80" width="40" height="240" fill="#b6f244"/>
 </svg>

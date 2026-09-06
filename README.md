@@ -219,6 +219,7 @@ Environment knobs (set in `.env` or `docker-compose.yml`):
 | `POLL_INTERVAL_SECONDS` | `600` | Poll cadence. Set to `0` to disable auto-poll. |
 | `BACKFILL_DAYS` | `7` | History window for newly added players |
 | `LOL_TRACKER_DB` | `/data/lol-tracker.db` | DB path inside the container |
+| `LOL_TRACKER_PUBLIC_URL` | Request origin | Public HTTP(S) origin for canonical URLs, social images, JSON-LD and sitemaps (for example `https://lol-tracker.cn.lt`). Set explicitly behind a proxy; no path, credentials or query. |
 
 Database lives in `./data/` on the host (bind-mounted to `/data` in the container)
 so backups are just an rsync of that directory. `restart: unless-stopped` keeps
@@ -336,3 +337,36 @@ A `GET /health` endpoint returns `ok` for uptime checks.
 - Time-of-day and day-of-week heatmaps.
 - Web UI — likely Next.js reading the same SQLite (or Postgres if it outgrows).
 - Live-game lookup via Spectator-V5.
+
+## Search and sharing
+
+HTML responses include page-specific titles/descriptions, canonical URLs, Open
+Graph/X cards and escaped JSON-LD (`WebSite`, `WebPage`, `CollectionPage`,
+`AboutPage`, and visible `BreadcrumbList` where applicable). Match previews use
+the recorded queue, date, duration and tracked champion/player identities. The
+shared social artwork is `public/og.png` (1200×630), with editable source
+`public/og.svg`. Raster browser/touch icons and `site.webmanifest` are also served.
+No account-verification tags or social handles are fabricated.
+
+`/matches` is a paginated archive of ordinary match links. `/sitemap.xml` is a
+sitemap index: `/sitemaps/pages.xml` covers site sections and tracked profiles;
+`/sitemaps/matches-N.xml` covers every stored match, 1,000 URLs per document.
+These queries select only discovery fields, not full Riot payloads. We omit
+`lastmod` because ingestion timestamps do not capture every later page change.
+Filters are `noindex,follow`; match tabs consolidate to the match canonical URL,
+and archive pagination has distinct canonical URLs. Errors, HTMX fragments,
+refresh and machine API/MCP responses carry `X-Robots-Tag: noindex,follow`.
+Robots.txt permits fetching so crawlers can see those directives.
+
+`/about` explains data sources, statistical definitions and coverage limits.
+`/llms.txt` is an optional navigation guide for assistants, pointing to the same
+visible pages and public `/API.md`; it is not a ranking guarantee or a substitute
+for useful crawlable content. Charts retain server-rendered text/table fallbacks.
+
+Run `pnpm smoke:seo` for metadata, JSON-LD safety, crawler headers, sitemap/archive
+pagination and social-image checks. It is included in `pnpm smoke` and CI. When
+changing SVG artwork, regenerate and visually inspect the committed PNGs. After
+deployment, verify the public canonical origin and fetch the share image with
+social crawler user agents. Submit `/sitemap.xml` in an owner-verified Search
+Console or Bing Webmaster Tools property if configured; verification credentials
+and indexing decisions are external to the application.

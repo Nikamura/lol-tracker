@@ -23,7 +23,8 @@ import { parseSince, resolveQueueFilter } from "../lib/queues.js";
 import { Layout } from "./layout.js";
 import { RefreshButton } from "./components/refresh-button.js";
 import type { RefreshController } from "./refresh.js";
-import { resolveBaseUrl, resolveSeo, type PageSeo } from "./seo.js";
+import { resolveBaseUrl, resolveSeo, matchSeo, ROBOTS_NOINDEX, type PageSeo } from "./seo.js";
+import { registerDiscovery } from "./discovery.js";
 import { MatchTabs, type TabKey } from "./pages/match-tabs.js";
 import { PlayersPage } from "./pages/players.js";
 import { PlayerProfilePage, PlayerProfileBody } from "./pages/player-profile.js";
@@ -174,6 +175,12 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
   const app = new Hono<{ Variables: Variables }>();
   const { refresh } = options;
 
+  app.use("*", async (c, next) => {
+    await next();
+    // Keep fragments and machine endpoints fetchable so crawlers can see noindex.
+    if (c.res.status >= 400 || /^\/(?:fragments(?:\/|$)|api(?:\/|$)|mcp(?:\/|$)|refresh$)/.test(c.req.path)) c.header("X-Robots-Tag", ROBOTS_NOINDEX);
+  });
+
   app.get("/API.md", serveApiDocs);
   app.route("/api/v1", createApi(db));
 
@@ -186,7 +193,9 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
     "*",
     jsxRenderer(
       ({ children }, c) => {
-        const seo = resolveSeo(c.get("seo"), resolveBaseUrl(c.req.url));
+        const pageSeo = c.get("seo");
+        const filtered = Object.keys(c.req.query()).some(key => !["tab", "page", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"].includes(key));
+        const seo = resolveSeo(pageSeo ? { ...pageSeo, noindex: pageSeo.noindex || filtered } : undefined, resolveBaseUrl(c.req.url));
         const refreshState = refresh?.getState() ?? null;
         return (
           <Layout active={c.get("active")} seo={seo} refreshState={refreshState}>
@@ -211,7 +220,7 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
   app.get("/", (c) => {
     c.set("active", "timeline");
     c.set("seo", {
-      title: "Timeline · lol-tracker",
+      title: "LoL match tracker · Champion graphs & friend-group stats",
       description:
         "Live match timeline for the tracked friend group — recent League of Legends games grouped into shared parties, with queue and player filters.",
       path: "/",
@@ -252,11 +261,7 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
     const matchId = c.req.param("matchId");
     const raw = getMatchRaw(db, matchId);
     if (!raw) return c.notFound();
-    c.set("seo", {
-      title: `${matchId} · lol-tracker`,
-      description: "Match results, player statistics, and timeline.",
-      path: `/matches/${encodeURIComponent(matchId)}`,
-    });
+    c.set("seo", matchSeo(raw));
     return c.render(<><h1 class="sr-only">Match {matchId}</h1><MatchTabs raw={raw} active={(["overview", "stats", "timeline", "graphs", "champions"] as string[]).includes(c.req.query("tab") ?? "") ? c.req.query("tab") as TabKey : "overview"} /></>);
   });
 
@@ -287,7 +292,8 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
     c.set("seo", {
       title: `${display} · Player profile · lol-tracker`,
       description: `League of Legends profile for ${display} — current rank, recent matches, role and champion breakdowns.`,
-      path: `/players/${puuid}`,
+      path: `/players/${encodeURIComponent(puuid)}`,
+      breadcrumbs: [{ name: "Home", path: "/" }, { name: "Players", path: "/players" }, { name: display, path: `/players/${encodeURIComponent(puuid)}` }],
     });
     return c.render(<PlayerProfilePage data={data} filters={filters} />);
   });
@@ -420,49 +426,9 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
     return c.html(<HeatmapsBody data={data} />);
   });
 
-  app.get("/robots.txt", (c) => {
-    const base = resolveBaseUrl(c.req.url);
-    const body = [
-      "User-agent: *",
-      "Allow: /",
-      "Disallow: /fragments/",
-      base ? `Sitemap: ${base}/sitemap.xml` : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
-    return c.text(body + "\n", 200, { "Content-Type": "text/plain; charset=utf-8" });
-  });
-
-  app.get("/sitemap.xml", (c) => {
-    const base = resolveBaseUrl(c.req.url);
-    const players = listPlayers(db);
-    const paths = [
-      "/",
-      "/leaderboards",
-      "/streaks",
-      "/heatmaps",
-      "/compare",
-      "/daily",
-      "/players",
-      ...players.map((p) => `/players/${p.puuid}`),
-    ];
-    const urls = paths
-      .map((p) => `  <url><loc>${escapeXml(base + p)}</loc></url>`)
-      .join("\n");
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
-    return c.body(xml, 200, { "Content-Type": "application/xml; charset=utf-8" });
-  });
+  registerDiscovery(app, db);
 
   app.all("/mcp", (c) => handleMcpHttpRequest(db, c.req.raw));
 
   return app;
-}
-
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
 }

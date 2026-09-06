@@ -1,7 +1,7 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
 import { RefreshButton } from "./components/refresh-button.js";
 import type { RefreshState } from "./refresh.js";
-import type { ResolvedSeo } from "./seo.js";
+import { ROBOTS_INDEX, ROBOTS_NOINDEX, type ResolvedSeo } from "./seo.js";
 
 export const Layout: FC<
   PropsWithChildren<{
@@ -19,7 +19,7 @@ export const Layout: FC<
       {seo.canonical ? <link rel="canonical" href={seo.canonical} /> : null}
       <meta
         name="robots"
-        content={seo.noindex ? "noindex,nofollow" : "index,follow"}
+        content={seo.noindex ? ROBOTS_NOINDEX : ROBOTS_INDEX}
       />
       <meta name="theme-color" content="#0a0f1f" media="(prefers-color-scheme: dark)" />
       <meta name="theme-color" content="#fafaf6" media="(prefers-color-scheme: light)" />
@@ -32,9 +32,10 @@ export const Layout: FC<
       <meta property="og:description" content={seo.description} />
       {seo.canonical ? <meta property="og:url" content={seo.canonical} /> : null}
       <meta property="og:image" content={seo.ogImage} />
+      <meta property="og:image:type" content="image/png" />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
-      <meta property="og:image:alt" content={`${seo.siteName} — ${seo.description}`} />
+      <meta property="og:image:alt" content={seo.imageAlt} />
       <meta property="og:locale" content="en_US" />
 
       {/* Twitter / X */}
@@ -42,11 +43,13 @@ export const Layout: FC<
       <meta name="twitter:title" content={seo.title} />
       <meta name="twitter:description" content={seo.description} />
       <meta name="twitter:image" content={seo.ogImage} />
-      {seo.twitterHandle ? <meta name="twitter:site" content={seo.twitterHandle} /> : null}
+      <meta name="twitter:image:alt" content={seo.imageAlt} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: seo.jsonLd }} />
 
       <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
-      <link rel="alternate icon" href="/static/favicon.svg" />
-      <link rel="apple-touch-icon" href="/static/favicon.svg" />
+      <link rel="icon" href="/static/favicon-32.png" sizes="32x32" type="image/png" />
+      <link rel="apple-touch-icon" href="/static/apple-touch-icon.png" sizes="180x180" />
+      <link rel="manifest" href="/static/site.webmanifest" />
 
       <link rel="stylesheet" href="/static/app.css" />
       <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
@@ -64,7 +67,10 @@ export const Layout: FC<
     <body class="min-h-screen bg-background text-foreground">
       <a class="skip-link" href="#main-content">Skip to content</a>
       <Masthead active={active} refreshState={refreshState ?? null} />
-      <main id="main-content" tabindex={-1} class="mx-auto max-w-6xl px-6 pb-16">{children}</main>
+      <main id="main-content" tabindex={-1} class="mx-auto max-w-6xl px-6 pb-16">
+        {seo.breadcrumbs.length > 1 && <nav aria-label="Breadcrumb" class="pt-6 text-sm text-muted-foreground"><ol class="flex flex-wrap items-center gap-2">{seo.breadcrumbs.map((b, i) => <li class="flex items-center gap-2">{i > 0 && <span aria-hidden="true">/</span>}{i === seo.breadcrumbs.length - 1 ? <span aria-current="page">{b.name}</span> : <a class="underline underline-offset-4 hover:text-foreground" href={b.url}>{b.name}</a>}</li>)}</ol></nav>}
+        {children}
+      </main>
       <Footer />
     </body>
   </html>
@@ -173,9 +179,7 @@ const Footer: FC = () => (
       <span class="scoreboard-eyebrow">
         Compiled by lol-tracker · Not endorsed by Riot Games
       </span>
-      <span class="font-mono">
-        SQLite · Hono · HTMX · Tailwind
-      </span>
+      <nav aria-label="Resources" class="flex flex-wrap gap-4"><a class="underline underline-offset-4" href="/matches">Match archive</a><a class="underline underline-offset-4" href="/about">About &amp; methodology</a><a class="underline underline-offset-4" href="/API.md">Data API</a></nav>
     </div>
   </footer>
 );
