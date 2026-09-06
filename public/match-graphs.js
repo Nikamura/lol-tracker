@@ -41,6 +41,7 @@
   const championPanels = new WeakSet();
   const eventPanels = new WeakSet();
   let dismissHover = null;
+  let pendingTabFocus = null;
   function catalog(version) {
     if (!itemCatalogs.has(version)) itemCatalogs.set(version,
       fetch('https://ddragon.leagueoflegends.com/cdn/' + encodeURIComponent(version) + '/data/en_US/item.json')
@@ -55,6 +56,12 @@
     return node;
   }
   function hydrate(root) {
+    root.querySelectorAll('.scroll-x, .skill-scroll, .gatsby-heatmap-scroll, .overflow-x-auto').forEach(node=>{
+      if (node.matches('nav') || node.hasAttribute('tabindex')) return;
+      node.tabIndex=0;
+      node.setAttribute('role','group');
+      node.setAttribute('aria-label',node.classList.contains('skill-scroll')?'Skill order, scroll horizontally':'Data table, scroll horizontally');
+    });
     root.querySelectorAll('[data-champion-analysis]').forEach(panel => {
       if (championPanels.has(panel)) return;
       championPanels.add(panel);
@@ -342,7 +349,10 @@
           if(index===data.timestamps.length-1) stop();
         },650);
       });
-      slider.addEventListener('input', () => {stop(); inspect(Number(slider.value));});
+      function sliderHover() { showHover({x:x(data.timestamps[index]),y:top+10}); }
+      slider.addEventListener('input', () => {stop(); inspect(Number(slider.value)); sliderHover();});
+      slider.addEventListener('focus', sliderHover);
+      slider.addEventListener('blur', hideHover);
       function pointerHover(event) {
         if (playing) return;
         const matrix = svg.getScreenCTM();
@@ -356,7 +366,8 @@
       }
       svg.addEventListener('pointermove', pointerHover);
       svg.addEventListener('pointerdown', pointerHover);
-      svg.addEventListener('pointerleave', hideHover);
+      svg.addEventListener('pointerleave', event => { if (!tooltip.contains(event.relatedTarget)) hideHover(); });
+      tooltip.addEventListener('pointerleave', hideHover);
       draw();
       // Observe the panel so embedded match rows and narrow screens keep legible axes.
       const observer = new ResizeObserver(() => {
@@ -387,7 +398,28 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => hydrate(document));
   else hydrate(document);
-  document.addEventListener('htmx:afterSwap', event => hydrate(event.target.parentElement || document));
+  document.addEventListener('htmx:beforeRequest', event => {
+    const tab = event.detail?.elt;
+    if (tab?.matches('[role="tab"]') && tab.closest('[data-match-tabs]')) pendingTabFocus=tab.id;
+  });
+  document.addEventListener('htmx:afterSwap', event => {
+    hydrate(event.target.parentElement || document);
+    if (pendingTabFocus) {
+      const tab=document.getElementById(pendingTabFocus);
+      if (tab && event.target.contains(tab)) { tab.focus(); pendingTabFocus=null; }
+    }
+  });
+  document.addEventListener('htmx:afterRequest', event => { if (event.detail?.failed) pendingTabFocus=null; });
+  document.addEventListener('keydown', event => {
+    const tab=event.target.closest('[data-match-tabs] [role="tab"]');
+    if (!tab || !['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+    const tabs=[...tab.closest('[role="tablist"]').querySelectorAll('[role="tab"]:not(:disabled)')];
+    const index=tabs.indexOf(tab);
+    const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+    event.preventDefault();
+    tabs.forEach(t=>{ t.tabIndex=t===tabs[next]?0:-1; });
+    tabs[next].focus();
+  });
   document.addEventListener('htmx:historyRestore', () => hydrate(document));
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && dismissHover) dismissHover(); });
 })();

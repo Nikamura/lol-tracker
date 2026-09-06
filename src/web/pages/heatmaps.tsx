@@ -133,7 +133,7 @@ const HeatmapGrid: FC<{ cells: Cell[]; maxGames: number }> = ({ cells, maxGames 
   for (const c of cells) byKey.set(`${c.dayIdx}|${c.hour}`, c);
 
   return (
-    <div class="flex flex-col gap-1">
+    <><div class="scroll-x" tabindex={0} role="group" aria-label="Activity heatmap, scroll horizontally"><div class="flex flex-col gap-1" style="min-width: 470px" aria-hidden="true">
       <HourTicks />
       {DAY_LABELS.map((label, dayIdx) => (
         <div
@@ -161,7 +161,12 @@ const HeatmapGrid: FC<{ cells: Cell[]; maxGames: number }> = ({ cells, maxGames 
           })}
         </div>
       ))}
-    </div>
+    </div></div>
+      <details class="accessible-chart-data"><summary>View activity data</summary><p>Time slots with games. All other slots have zero games.</p>
+        <table><caption>Activity by day and hour</caption><thead><tr><th scope="col">Day / hour</th><th scope="col">Games</th><th scope="col">Wins</th><th scope="col">Win rate</th></tr></thead>
+          <tbody>{cells.map(cell=><tr><th scope="row">{fmtSlot(cell)}</th><td>{cell.games}</td><td>{cell.wins}</td><td>{cell.games ? Math.round(cell.wins / cell.games * 100) : 0}%</td></tr>)}</tbody>
+        </table>
+      </details></>
   );
 };
 

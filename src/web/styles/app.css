@@ -57,11 +57,11 @@
   --secondary: oklch(0.26 0.04 264);
   --secondary-foreground: oklch(0.97 0.012 85);
   --muted: oklch(0.24 0.04 264);
-  --muted-foreground: oklch(0.62 0.05 257);
+  --muted-foreground: oklch(0.72 0.035 257);
   --accent: oklch(0.26 0.04 264);
   --accent-foreground: oklch(0.97 0.012 85);
   --destructive: oklch(0.68 0.27 14);
-  --destructive-foreground: oklch(0.97 0.012 85);
+  --destructive-foreground: oklch(0.16 0.035 268);
   --success: oklch(0.88 0.24 132);
   --success-foreground: oklch(0.16 0.035 268);
   --warning: oklch(0.84 0.18 82);
@@ -134,7 +134,7 @@
     font-family: var(--font-sans);
     font-feature-settings: "ss01" on, "cv11" on;
     -webkit-font-smoothing: antialiased;
-    background-image: var(--bg-mesh);
+    background-image: none;
     background-attachment: fixed;
   }
 
@@ -283,7 +283,7 @@
 .gatsby-frame {
   position: relative;
   padding: 1.25rem 1.25rem 1.5rem;
-  background: linear-gradient(180deg, rgba(212, 175, 55, 0.04), rgba(11, 11, 13, 0.25));
+  background: #11131b;
   border: 1px solid rgba(212, 175, 55, 0.35);
   border-radius: 2px;
   box-shadow:
@@ -468,7 +468,7 @@
   min-width: 1.6rem;
 }
 .gatsby-heatmap__cell--empty {
-  color: rgba(244, 236, 216, 0.18);
+  color: rgba(244, 236, 216, 0.65);
 }
 
 /* Pentakill panel */
@@ -555,7 +555,7 @@
   color: rgba(226, 118, 124, 0.85);
 }
 .gatsby-crown-row .muted {
-  color: rgba(244, 236, 216, 0.45);
+  color: rgba(244, 236, 216, 0.7);
   font-family: "JetBrains Mono", monospace;
   font-size: 0.75rem;
 }
@@ -564,7 +564,7 @@
 .gatsby-embed-card {
   position: relative;
   padding: 1rem;
-  background: linear-gradient(180deg, rgba(212, 175, 55, 0.06), rgba(11, 11, 13, 0.25));
+  background: #11131b;
   border: 1px solid rgba(212, 175, 55, 0.35);
   border-radius: 2px;
 }
@@ -590,7 +590,7 @@
   gap: 0.85rem;
   padding: 0.75rem 1rem;
   border: 1px solid rgba(212, 175, 55, 0.4);
-  background: linear-gradient(180deg, rgba(212, 175, 55, 0.08), rgba(11, 11, 13, 0.3));
+  background: #11131b;
   border-radius: 2px;
   margin-bottom: 1rem;
 }
@@ -790,10 +790,10 @@
 .shop-action { white-space: nowrap; }
 
 /* Lock each nested scroller to its content axis instead of free two-axis panning. */
-.overflow-x-auto, .scroll-x, .skill-scroll, .gatsby-heatmap-scroll { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
-.moment-list { overflow-x: hidden; overflow-y: auto; touch-action: pan-y; overscroll-behavior-y: contain; }
+.overflow-x-auto, .scroll-x, .skill-scroll, .gatsby-heatmap-scroll { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; }
+.moment-list { overflow-x: hidden; overflow-y: auto; touch-action: pan-y pinch-zoom; overscroll-behavior-y: contain; }
 @media (max-width: 700px) {
-  html, body { touch-action: pan-x pan-y; }
+  html, body { touch-action: pan-x pan-y pinch-zoom; }
   /* 16px controls prevent iOS from zooming the page when a field gains focus. */
   input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea,
   .comparison-controls select { font-size: 16px; }
@@ -801,3 +801,19 @@
   .graph-tooltip-row { min-height: 24px; font-size: .65rem; }
   .champion-mini { width: 20px; height: 20px; }
 }
+
+/* Accessibility: visible keyboard location and reduced-motion preference. */
+.skip-link { position: fixed; top: .5rem; left: .5rem; z-index: 100; padding: .75rem 1rem; background: var(--foreground); color: var(--background); transform: translateY(-200%); }
+.skip-link:focus { transform: translateY(0); }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+.graph-tooltip { pointer-events: auto; }
+
+.accessible-chart-data { margin-top: 1rem; font-size: .8rem; color: var(--foreground); }
+.accessible-chart-data summary { cursor: pointer; padding: .5rem 0; text-decoration: underline; text-underline-offset: .2em; }
+.accessible-chart-data table { width: 100%; border-collapse: collapse; text-align: left; }
+.accessible-chart-data caption { text-align: left; padding: .75rem 0; }
+.accessible-chart-data th, .accessible-chart-data td { padding: .5rem; border-bottom: 1px solid var(--border); }

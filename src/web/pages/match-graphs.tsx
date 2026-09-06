@@ -39,12 +39,12 @@ export const MatchGraphs: FC<{ raw: MatchRaw; initialMetric?: GraphMetric }> = (
       <p class="graph-description" data-graph-peaks hidden></p>
       <div class="graph-plot">
         <svg data-graph-svg viewBox="0 0 960 320" role="img" aria-label="Champion statistics over game time"></svg>
-        <div class="graph-tooltip" data-graph-tooltip role="tooltip" hidden></div>
+        <div id={`graph-tooltip-${raw.match.metadata.matchId}`} class="graph-tooltip" data-graph-tooltip role="tooltip" hidden></div>
         <p data-graph-empty hidden>No recorded values for this selection.</p>
       </div>
       <div class="graph-playback"><button type="button" data-graph-play aria-pressed="false"><MatchIcon name="play" /> Play timeline</button><span>One snapshot per step · not a game replay</span></div>
       <label class="graph-scrubber">Inspect time
-        <input type="range" data-graph-time-slider min="0" max={data.timestamps.length - 1} value={data.timestamps.length - 1} step="1" aria-label="Inspect game time" />
+        <input type="range" data-graph-time-slider min="0" max={data.timestamps.length - 1} value={data.timestamps.length - 1} step="1" aria-label="Inspect game time" aria-describedby={`graph-tooltip-${raw.match.metadata.matchId}`} />
       </label>
       <section class="head-to-head" aria-label="Head-to-head comparison">
         <div class="comparison-controls"><h4><MatchIcon name="compare" /> Head to head</h4>
@@ -77,7 +77,7 @@ export const MatchGraphs: FC<{ raw: MatchRaw; initialMetric?: GraphMetric }> = (
         <p class="graph-description">Event times are exact; clicking selects the nearest recorded snapshot.</p>
         <div class="moment-list">{data.moments.map(m=><button type="button" data-graph-moment={m.timestamp} style={`--moment-color:${m.teamId===100?'#38bdf8':'#fb7185'}`}><div class="moment-meta"><MatchIcon name={eventIcon(m.kind)} /><time>{fmtClock(m.timestamp)}</time>{m.actorChampion && <img src={championIcon(version,m.actorChampion)} alt="" width="24" height="24" loading="lazy" title={m.actorChampion}/>}</div><span>{m.text}</span></button>)}</div>
       </section>
-      <p class="graph-footnote">Hover over the graph or move the time slider to compare champions at the same moment. Recorded snapshots are roughly one minute apart. Gaps mean unavailable data.</p>
+      <p class="graph-footnote">Focus the time slider and use arrow keys, or hover over the graph or move the time slider to compare champions at the same moment. Recorded snapshots are roughly one minute apart. Gaps mean unavailable data.</p>
       <noscript>Enable JavaScript to explore these graphs. The Stats tab contains the final match statistics.</noscript>
     </section>
   );

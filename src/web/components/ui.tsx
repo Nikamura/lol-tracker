@@ -64,9 +64,9 @@ export const CardHeader: FC<PropsWithChildren<{ class?: string }>> = ({ children
 );
 
 export const CardTitle: FC<PropsWithChildren<{ class?: string }>> = ({ children, class: cls }) => (
-  <h3 class={cn("font-display text-foreground text-xl leading-none tracking-wide uppercase", cls)}>
+  <h2 class={cn("font-display text-foreground text-xl leading-none tracking-wide uppercase", cls)}>
     {children}
-  </h3>
+  </h2>
 );
 
 export const CardDescription: FC<PropsWithChildren<{ class?: string }>> = ({ children, class: cls }) => (

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { Chart } from '../src/web/components/chart.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -89,6 +90,7 @@ try {
   const app = createApp(db);
   let html = await (await app.request('/matches/EUW1_graph-test?tab=graphs')).text();
   assert.match(html, /No timeline data/);
+  assert.match(html, /id="match-EUW1_graph-test-detail-tab-overview" tabindex="0"[^>]+aria-selected="true"/, 'unavailable graph links retain an enabled keyboard tab');
   const emptyChampion = await (await app.request('/matches/EUW1_graph-test?tab=champions')).text();
   assert.match(emptyChampion,/No skill upgrades recorded/);
   assert.match(emptyChampion,/Damage profile/);
@@ -119,6 +121,11 @@ try {
   assert.match(timelineHtml, /data-event-kind="ward"/);
   assert.equal((await app.request('/fragments/match/missing/graphs')).status, 404);
   assert.equal((await app.request('/static/match-graphs.js')).status, 200);
+  const horizontalTable = String(await Chart({config:{type:'bar',data:{labels:['Player <one>'],datasets:[{label:'Damage',data:[42]}]},options:{indexAxis:'y',scales:{x:{title:{text:'Champion damage'}},y:{}}}}}));
+  assert.match(horizontalTable, /<th scope="col">Category<\/th><th scope="col">Champion damage<\/th>/);
+  assert.match(horizontalTable, /Player &lt;one&gt;/);
+  assert.match(horizontalTable, /<td>42<\/td>/);
+  assert.ok(!html.includes('user-scalable=no'));
   console.log('Match graphs smoke checks passed.');
 } finally {
   db.$client.close();

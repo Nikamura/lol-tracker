@@ -13,7 +13,7 @@ export const Layout: FC<
   <html lang="en" class="dark">
     <head>
       <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>{seo.title}</title>
       <meta name="description" content={seo.description} />
       {seo.canonical ? <link rel="canonical" href={seo.canonical} /> : null}
@@ -62,8 +62,9 @@ export const Layout: FC<
       </noscript>
     </head>
     <body class="min-h-screen bg-background text-foreground">
+      <a class="skip-link" href="#main-content">Skip to content</a>
       <Masthead active={active} refreshState={refreshState ?? null} />
-      <main class="mx-auto max-w-6xl px-6 pb-16">{children}</main>
+      <main id="main-content" tabindex={-1} class="mx-auto max-w-6xl px-6 pb-16">{children}</main>
       <Footer />
     </body>
   </html>
@@ -80,13 +81,13 @@ const Masthead: FC<{ active?: string | undefined; refreshState: RefreshState | n
         <div class="flex items-center gap-2">
           <span class="size-1.5 rounded-full bg-success pulse-dot" aria-hidden="true" />
           <span>Live feed</span>
-          <span class="text-foreground/30">/</span>
-          <span class="text-foreground/60">Friend group ranked tracker</span>
+          <span class="text-foreground/30" aria-hidden="true">/</span>
+          <span class="text-muted-foreground">Friend group ranked tracker</span>
         </div>
         <div class="hidden md:flex items-center gap-3">
-          <span class="text-foreground/40">v0.1</span>
-          <span class="text-foreground/30">/</span>
-          <span class="text-foreground/60">EU-WEST · KR · NA</span>
+          <span class="text-muted-foreground">v0.1</span>
+          <span class="text-foreground/30" aria-hidden="true">/</span>
+          <span class="text-muted-foreground">EU-WEST · KR · NA</span>
         </div>
       </div>
 
@@ -96,7 +97,7 @@ const Masthead: FC<{ active?: string | undefined; refreshState: RefreshState | n
           <span class="font-display text-foreground text-5xl leading-none tracking-tight md:text-6xl">
             LOL <span class="text-success">/</span> TRACKER
           </span>
-          <span class="scoreboard-eyebrow text-foreground/45">
+          <span class="scoreboard-eyebrow text-muted-foreground">
             Match&nbsp;archive&nbsp;·&nbsp;Tactical&nbsp;readout
           </span>
         </a>
@@ -109,7 +110,7 @@ const Masthead: FC<{ active?: string | undefined; refreshState: RefreshState | n
       </div>
 
       {/* Navigation row */}
-      <nav class="flex items-stretch gap-px overflow-x-auto border-t border-border/40">
+      <nav aria-label="Primary navigation" class="flex items-stretch gap-px overflow-x-auto border-t border-border/40">
         <NavLink href="/" label="Timeline" active={active === "timeline"} />
         <NavLink href="/daily" label="Daily" active={active === "daily"} />
         <NavLink href="/leaderboards" label="Leaderboards" active={active === "leaderboards"} />
@@ -129,6 +130,7 @@ const NavLink: FC<{ href: string; label: string; active: boolean }> = ({
 }) => (
   <a
     href={href}
+    aria-current={active ? "page" : undefined}
     class={
       "kicker relative px-4 py-3 text-sm tracking-[0.18em] transition-colors " +
       (active

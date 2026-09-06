@@ -97,11 +97,14 @@ export interface MatchTabsProps {
 }
 
 export const MatchTabs: FC<MatchTabsProps> = ({ raw, active }) => {
+  const unavailable = !raw.timeline && ["graphs", "gold", "timeline"].includes(active);
+  if (unavailable) active = "overview";
   const containerId = `match-${raw.match.metadata.matchId}-detail`;
   return (
-    <div id={containerId} class="flex flex-col gap-4">
+    <div id={containerId} data-match-tabs class="flex flex-col gap-4">
+      {unavailable && <p class="text-muted-foreground text-sm" role="status">No timeline data for this match. Showing overview.</p>}
       <TabStrip raw={raw} active={active} containerId={containerId} />
-      <TabBody raw={raw} active={active} />
+      <div id={`${containerId}-panel`} role="tabpanel" tabindex={0} aria-labelledby={`${containerId}-tab-${active === "gold" ? "graphs" : active}`}><TabBody raw={raw} active={active} /></div>
     </div>
   );
 };
@@ -114,7 +117,7 @@ const TabStrip: FC<{ raw: MatchRaw; active: TabKey; containerId: string }> = ({
   const id = raw.match.metadata.matchId;
   const hasTimeline = raw.timeline != null;
   return (
-    <nav class="border-b flex items-center gap-1 overflow-x-auto" role="tablist">
+    <nav class="border-b flex items-center gap-1 overflow-x-auto" role="tablist" aria-label="Match views">
       {TABS.map((tab) => {
         const disabled = !hasTimeline && (tab.key === "timeline" || tab.key === "graphs");
         const isActive = tab.key === active || (tab.key === "graphs" && active === "gold");
@@ -122,6 +125,9 @@ const TabStrip: FC<{ raw: MatchRaw; active: TabKey; containerId: string }> = ({
           <button
             type="button"
             role="tab"
+            id={`${containerId}-tab-${tab.key}`}
+            tabindex={isActive ? 0 : -1}
+            aria-controls={`${containerId}-panel`}
             aria-selected={isActive ? "true" : "false"}
             disabled={disabled}
             hx-get={disabled ? undefined : tab.href(id)}
@@ -257,7 +263,7 @@ const TeamPanel: FC<{
 
 const Stat: FC<{ label: string; value: string | number }> = ({ label, value }) => (
   <div class="flex items-baseline gap-1">
-    <dt class="text-muted-foreground/70 text-[10px] uppercase tracking-wide"><MatchIcon name={statIcon(label)} /> {label}</dt>
+    <dt class="text-muted-foreground text-[10px] uppercase tracking-wide"><MatchIcon name={statIcon(label)} /> {label}</dt>
     <dd class="text-foreground">{value}</dd>
   </div>
 );
@@ -361,7 +367,7 @@ const ParticipantRow: FC<{
       <div class="font-mono text-right text-xs">
         <div class="text-foreground">
           {p.kills}<span class="text-muted-foreground"> / </span>
-          <span class="text-destructive/90">{p.deaths}</span>
+          <span class="text-destructive">{p.deaths}</span>
           <span class="text-muted-foreground"> / </span>{p.assists}
         </div>
         <div class="text-muted-foreground">

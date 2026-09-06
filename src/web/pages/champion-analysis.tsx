@@ -13,7 +13,7 @@ export const ChampionAnalysis: FC<{raw: MatchRaw}> = ({raw}) => {
   const selected = players.find(p => raw.trackedNames.has(p.puuid)) ?? players[0];
   return <section class="champion-analysis" data-champion-analysis data-item-version={version} aria-label="Champion analysis">
     <div class="analysis-intro"><span class="analysis-eyebrow">THE INDIVIDUAL GAME</span><h2>Behind the scoreline</h2><p>Follow a champion’s build, skill choices, and contribution to the team.</p></div>
-    <div class="champion-picker" aria-label="Choose a champion">
+    <div class="champion-picker" role="group" aria-label="Choose a champion">
       {players.map(p => <button type="button" data-champion-pick={p.puuid} aria-pressed={p === selected ? 'true' : 'false'} title={p.riotIdGameName ?? p.championName}>
         <img src={championIcon(version,p.championName)} alt="" width="40" height="40"/><span>{p.championName}</span>
       </button>)}
@@ -61,7 +61,7 @@ export const ChampionAnalysis: FC<{raw: MatchRaw}> = ({raw}) => {
         <section class="analysis-card"><h4><MatchIcon name="level" /> Skill order</h4><p>Recorded upgrade order, with the time each point was spent. Numbers inside each tile show ability rank.</p>
           {build.skills.length ? <div class="skill-scroll"><div class="skill-grid" style={`grid-template-columns:48px repeat(${build.skills.length}, minmax(38px, 1fr))`}>
             <span/>{build.skills.map(s=><small>{s.order}</small>)}
-            {keys.map((key,i)=><><strong class={`skill-key skill-${key}`} data-ability-slot={i}><span>{key}</span></strong>{build.skills.map(s=><span class={s.slot===i+1?`skill-point skill-${key}`:'skill-blank'} title={s.slot===i+1?`${key} rank ${s.rank} at ${fmtClock(s.timestamp)}`:undefined}>{s.slot===i+1?s.rank:''}</span>)}</>)}
+            {keys.map((key,i)=><><strong class={`skill-key skill-${key}`} data-ability-slot={i}><span>{key}</span></strong>{build.skills.map(s=><span class={s.slot===i+1?`skill-point skill-${key}`:'skill-blank'} role={s.slot===i+1?'img':undefined} aria-label={s.slot===i+1?`Upgrade ${s.order}: ${key} rank ${s.rank} at ${fmtClock(s.timestamp)}`:undefined} title={s.slot===i+1?`${key} rank ${s.rank} at ${fmtClock(s.timestamp)}`:undefined}>{s.slot===i+1?s.rank:''}</span>)}</>)}
             <span/>{build.skills.map(s=><small>{fmtClock(s.timestamp)}</small>)}
           </div></div>:<p class="analysis-empty">No skill upgrades recorded for this champion.</p>}
         </section>

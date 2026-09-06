@@ -211,7 +211,7 @@ const ChampionCluster: FC<{
         <span class="text-foreground truncate text-sm font-semibold tracking-tight">{playerName}</span>
       ) : null}
       <span class="text-muted-foreground truncate text-xs">{championName}</span>
-      {role ? <span class="text-muted-foreground/70 text-[10px] uppercase tracking-wider">{role}</span> : null}
+      {role ? <span class="text-muted-foreground text-[10px] uppercase tracking-wider">{role}</span> : null}
     </div>
   </div>
 );
@@ -275,10 +275,10 @@ const StatsCluster: FC<{ row: TimelineRow }> = ({ row }) => (
     </div>
     <div class="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
       <span class="font-mono">
-        {csOf(row)} CS · <span class="text-muted-foreground/80">{csPerMin(row)}/m</span>
+        {csOf(row)} CS · <span class="text-muted-foreground">{csPerMin(row)}/m</span>
       </span>
       <span class="font-mono">
-        {(row.goldEarned ?? 0).toLocaleString()} g · <span class="text-muted-foreground/80">{gpm(row)}/m</span>
+        {(row.goldEarned ?? 0).toLocaleString()} g · <span class="text-muted-foreground">{gpm(row)}/m</span>
       </span>
       {row.visionScore != null ? <span class="font-mono">{row.visionScore} vision</span> : null}
     </div>
@@ -329,7 +329,7 @@ const OutcomeCluster: FC<{ outcome: "win" | "loss"; queue: string; when: string;
       {outcome === "win" ? "Victory" : "Defeat"}
     </span>
     <span class="text-muted-foreground text-xs">{queue}</span>
-    <span class="text-muted-foreground/80 font-mono text-[11px]">
+    <span class="text-muted-foreground font-mono text-[11px]">
       {duration} · {when}
     </span>
   </div>

@@ -37,7 +37,7 @@ export interface PlayersProps {
 export const PlayersPage: FC<PlayersProps> = ({ rows }) => (
   <Card>
     <CardHeader>
-      <CardTitle>Tracked players</CardTitle>
+      <h1 class="font-display text-foreground text-xl uppercase">Tracked players</h1>
     </CardHeader>
     <CardContent>
       {rows.length === 0 ? (

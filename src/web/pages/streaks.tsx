@@ -104,7 +104,7 @@ const Stat: FC<{ label: string; value: string; tooltip?: string }> = ({
   <div class="flex flex-col gap-0.5" title={tooltip}>
     <dt
       class={cn(
-        "text-muted-foreground/70 text-[10px] uppercase tracking-wide",
+        "text-muted-foreground text-[10px] uppercase tracking-wide",
         tooltip && "decoration-dotted underline underline-offset-2",
       )}
     >
@@ -150,7 +150,7 @@ const PlayerCard: FC<{ player: PlayerStreaks }> = ({ player }) => {
         <div class="flex flex-col gap-4">
           <div class="flex flex-wrap items-center gap-4">
             <div class="flex flex-col gap-1">
-              <span class="text-muted-foreground/70 text-[10px] uppercase tracking-wide">
+              <span class="text-muted-foreground text-[10px] uppercase tracking-wide">
                 Last 10
               </span>
               <Last10Strip games={player.last10} />

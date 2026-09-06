@@ -209,10 +209,10 @@ const HeadlineStats: FC<{ data: ProfileData }> = ({ data }) => {
           {items.map((it) => (
             <div class="flex flex-col gap-1">
               <dt class="text-muted-foreground text-[10px] uppercase tracking-wider">{it.label}</dt>
-              <dd class="font-mono text-foreground text-lg leading-none">{it.value}</dd>
+              <dd class="font-mono text-foreground text-lg leading-none">{it.value}
               {it.hint ? (
-                <span class="text-muted-foreground/80 font-mono text-[10px]">{it.hint}</span>
-              ) : null}
+                <span class="block mt-1 text-muted-foreground font-mono text-[10px]">{it.hint}</span>
+              ) : null}</dd>
             </div>
           ))}
         </dl>
@@ -383,7 +383,7 @@ const ChampionStatsCard: FC<{ champs: ChampionStat[]; version: string }> = ({
                   <div class="flex items-center gap-2.5">
                     <img
                       src={championIcon(version, c.championName)}
-                      alt={c.championName}
+                      alt=""
                       class="size-8 rounded ring-1 ring-border"
                       loading="lazy"
                     />
@@ -433,7 +433,7 @@ const MasteryCard: FC<{ masteries: MasteryStat[]; champNameById: Map<number, str
               <li class="flex flex-col items-center gap-1.5 rounded-lg border bg-muted/20 p-3">
                 <img
                   src={championIcon(version, name)}
-                  alt={name}
+                  alt=""
                   class="size-12 rounded-lg ring-1 ring-border"
                   loading="lazy"
                 />

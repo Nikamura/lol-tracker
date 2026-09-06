@@ -257,7 +257,7 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
       description: "Match results, player statistics, and timeline.",
       path: `/matches/${encodeURIComponent(matchId)}`,
     });
-    return c.render(<MatchTabs raw={raw} active={(["overview", "stats", "timeline", "graphs", "champions"] as string[]).includes(c.req.query("tab") ?? "") ? c.req.query("tab") as TabKey : "overview"} />);
+    return c.render(<><h1 class="sr-only">Match {matchId}</h1><MatchTabs raw={raw} active={(["overview", "stats", "timeline", "graphs", "champions"] as string[]).includes(c.req.query("tab") ?? "") ? c.req.query("tab") as TabKey : "overview"} /></>);
   });
 
   const tabHandler = (active: TabKey) => (c: Context<{ Variables: Variables }>) => {

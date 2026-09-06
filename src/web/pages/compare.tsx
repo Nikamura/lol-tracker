@@ -172,7 +172,7 @@ const ChampionAffairPanel: FC<{ data: ChampionAffairData }> = ({ data }) => {
         <table class="gatsby-heatmap">
           <thead>
             <tr>
-              <th class="gatsby-heatmap__corner"></th>
+              <th class="gatsby-heatmap__corner" scope="col"><span class="sr-only">Player</span></th>
               {data.champions.map((c) => (
                 <th class="gatsby-heatmap__champ">
                   <span>{c}</span>
@@ -637,7 +637,7 @@ const WeekdayPanel: FC<{ rows: WeekdayRow[] }> = ({ rows }) => {
         <table class="gatsby-heatmap">
           <thead>
             <tr>
-              <th class="gatsby-heatmap__corner"></th>
+              <th class="gatsby-heatmap__corner" scope="col"><span class="sr-only">Player</span></th>
               {WEEKDAYS.map((d) => (
                 <th class="gatsby-heatmap__champ"><span>{d}</span></th>
               ))}
@@ -659,7 +659,7 @@ const WeekdayPanel: FC<{ rows: WeekdayRow[] }> = ({ rows }) => {
                     return (
                       <td
                         class="gatsby-heatmap__cell"
-                        style="opacity:0.45"
+                        style="color:var(--muted-foreground)"
                         title={`${r.displayName} · ${WEEKDAYS[i]}: ${cell.wins}/${cell.games} (sample too small)`}
                       >
                         {pct}
@@ -735,7 +735,7 @@ const PlayerToggles: FC<{ players: PlayerLite[]; excludedPuuids: string[] }> = (
                   transition-colors duration-150
                   hover:bg-accent hover:text-accent-foreground hover:border-border
                   peer-checked:border-dashed peer-checked:border-border/40 peer-checked:bg-transparent
-                  peer-checked:text-muted-foreground/60 peer-checked:line-through
+                  peer-checked:text-muted-foreground peer-checked:line-through
                   peer-focus-visible:ring-1 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-1
                   peer-focus-visible:ring-offset-background
                 "

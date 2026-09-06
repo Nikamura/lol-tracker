@@ -18,10 +18,35 @@ export interface ChartProps {
 
 export const Chart: FC<ChartProps> = ({ config, height = 280, class: cls }) => {
   const json = JSON.stringify(config);
+  // These configurations are assembled by our server-side comparison panels.
+  const chart = config as {
+    type?: string;
+    data?: { labels?: unknown[]; datasets?: Array<{label?: string; data?: unknown[]}> };
+    options?: { indexAxis?: string; scales?: Record<string, {type?: string; title?: {text?: string}}> };
+  };
+  const horizontal = chart.options?.indexAxis === "y";
+  const xScale = chart.options?.scales?.[horizontal ? "y" : "x"];
+  const xTitle = xScale?.type === "time" ? "Date (UTC)" : xScale?.title?.text ?? "Category";
+  const yTitle = chart.options?.scales?.[horizontal ? "x" : "y"]?.title?.text ?? "Value";
+  const rows = (chart.data?.datasets ?? []).flatMap((series, seriesIndex) => (series.data ?? []).map((point, index) => {
+    const xy = point != null && typeof point === "object" ? point as {x?: unknown; y?: unknown} : null;
+    const x = xy ? xy.x : chart.data?.labels?.[index] ?? index + 1;
+    const date = xScale?.type === "time" && (typeof x === "number" || typeof x === "string") ? new Date(x) : null;
+    return { series: series.label ?? `Series ${seriesIndex + 1}`, x: date && Number.isFinite(date.getTime()) ? date.toISOString() : String(x ?? "—"), y: String((xy ? xy.y : point) ?? "Unavailable") };
+  }));
   return (
-    <div class={`gatsby-chart-frame ${cls ?? ""}`} style={`height: ${height}px;`}>
-      <canvas data-chart={json}></canvas>
-    </div>
+    <>
+      <div class={`gatsby-chart-frame ${cls ?? ""}`} style={`height: ${height}px;`}>
+        <canvas data-chart={json} role="img" aria-label={`${chart.type ?? "Data"} chart. ${yTitle} by ${xTitle}. Full values in the chart data table below.`}></canvas>
+      </div>
+      <details class="accessible-chart-data"><summary>View chart data</summary>
+        <div class="scroll-x" tabindex={0} role="group" aria-label="Chart data, scroll horizontally">
+          <table><caption>{yTitle} by {xTitle}</caption><thead><tr><th scope="col">Series</th><th scope="col">{xTitle}</th><th scope="col">{yTitle}</th></tr></thead>
+            <tbody>{rows.map(row=><tr><th scope="row">{row.series}</th><td>{row.x}</td><td>{row.y}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </details>
+    </>
   );
 };
 
@@ -45,10 +70,11 @@ export const ChartBoot: FC = () => {
     var canvases = scope.querySelectorAll('canvas[data-chart]');
     for (var i = 0; i < canvases.length; i++) {
       var c = canvases[i];
-      if (c.dataset.hydrated === '1') continue;
+      if (window.Chart.getChart(c)) continue;
       try {
         var cfg = JSON.parse(c.getAttribute('data-chart'));
         cfg.options = cfg.options || {};
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) cfg.options.animation=false;
         cfg.options.responsive = true;
         cfg.options.maintainAspectRatio = false;
         cfg.options.plugins = cfg.options.plugins || {};
@@ -85,6 +111,7 @@ export const ChartBoot: FC = () => {
       if (inst) inst.destroy();
     }
   });
+  document.body.addEventListener('htmx:historyRestore', function(){ hydrate(document); });
   document.body.addEventListener('htmx:afterSwap', function(e){ hydrate(e.target || document); });
 })();
 `;
