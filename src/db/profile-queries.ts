@@ -239,6 +239,14 @@ export interface ProfileQueryOpts {
 }
 
 export function getCurrentSoloRank(db: DB, puuid: string): CurrentRank | undefined {
+  return getCurrentRank(db, puuid, SOLO_QUEUE);
+}
+
+export function getCurrentRank(
+  db: DB,
+  puuid: string,
+  queueType: typeof SOLO_QUEUE | typeof FLEX_QUEUE,
+): CurrentRank | undefined {
   const row = db
     .select({
       queueType: playerRankSnapshots.queueType,
@@ -253,7 +261,7 @@ export function getCurrentSoloRank(db: DB, puuid: string): CurrentRank | undefin
     .where(
       and(
         eq(playerRankSnapshots.puuid, puuid),
-        eq(playerRankSnapshots.queueType, SOLO_QUEUE),
+        eq(playerRankSnapshots.queueType, queueType),
       ),
     )
     .orderBy(desc(playerRankSnapshots.capturedAt))
@@ -794,4 +802,3 @@ export function getImprovementSignals(
     last10Form,
   };
 }
-

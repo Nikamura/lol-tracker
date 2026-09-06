@@ -28,6 +28,7 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/public ./public
 COPY package.json ./
+COPY API.md ./
 
 VOLUME ["/data"]
 EXPOSE 5173

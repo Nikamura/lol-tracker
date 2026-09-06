@@ -212,6 +212,27 @@ to satisfy the FKs on `players.puuid`). A SHA-256 fingerprint of the API key
 is stored in `meta` so `poll` refuses to run, and `serve` disables auto-poll,
 until `rekey` has caught up with the new key.
 
+## Service API (five-stack-bot)
+
+`serve` and the web-only entry point mount a public, read-only JSON API at
+`/api/v1`. It provides tracked-player lookup, solo/flex rank, recent matches,
+role/champion statistics, and match details from cached SQLite data. No token
+or authorization header is required; requests do not call Riot or trigger polling.
+
+The complete consumer contract is [API.md](API.md), served as Markdown at
+`GET /API.md` and `GET /api/v1/API.md` on the tracker. Give another agent the
+running tracker's `/API.md` URL to integrate without access to this repository.
+API responses also advertise the guide through a `Link: ...; rel="describedby"`
+header. The guide is included in the Docker image and covers request examples,
+response types, query limits, error handling, freshness, and account linking.
+
+```bash
+curl --fail http://localhost:5173/API.md
+curl --fail http://localhost:5173/api/v1/players
+```
+
+Run isolated API and documentation checks with `pnpm smoke:api`.
+
 ## MCP server
 
 The `serve` command exposes an [MCP](https://modelcontextprotocol.io) endpoint at `POST /mcp` alongside the web UI — so the existing homelab container already hosts it (`http://<host>:5173/mcp`) with no extra config. `lol-tracker mcp` is also available as a stand-alone process for non-`serve` deployments.

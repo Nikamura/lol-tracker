@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono, type Context } from "hono";
 import { jsxRenderer } from "hono/jsx-renderer";
+import { createApi } from "../api/server.js";
+import { serveApiDocs } from "../api/docs.js";
 import type { DB } from "../db/connect.js";
 import {
   getIngestState,
@@ -171,6 +173,9 @@ export interface CreateAppOptions {
 export function createApp(db: DB, options: CreateAppOptions = {}) {
   const app = new Hono<{ Variables: Variables }>();
   const { refresh } = options;
+
+  app.get("/API.md", serveApiDocs);
+  app.route("/api/v1", createApi(db));
 
   app.use(
     "/static/*",
