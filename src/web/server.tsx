@@ -248,6 +248,18 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
 
   app.get("/parties", (c) => c.redirect("/"));
 
+  app.get("/matches/:matchId", (c) => {
+    const matchId = c.req.param("matchId");
+    const raw = getMatchRaw(db, matchId);
+    if (!raw) return c.notFound();
+    c.set("seo", {
+      title: `${matchId} · lol-tracker`,
+      description: "Match results, player statistics, and timeline.",
+      path: `/matches/${encodeURIComponent(matchId)}`,
+    });
+    return c.render(<MatchTabs raw={raw} active="overview" />);
+  });
+
   const tabHandler = (active: TabKey) => (c: Context<{ Variables: Variables }>) => {
     const matchId = c.req.param("matchId");
     if (!matchId) return c.notFound();

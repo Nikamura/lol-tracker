@@ -138,6 +138,7 @@ Pages:
 
 - `/` — party-grouped timeline (solo matches and stacks rendered side-by-side, grouped by team) with HTMX-driven filters (since / queue / player / limit). The filter form posts to `/fragments/timeline`, which returns an HTML fragment swapped into the page.
 - `/players` — tracked players with last-poll and last-match timestamps.
+- `/matches/:matchId` — shareable full match page with overview, stats and available timeline/gold tabs; used by Telegram result links.
 - `/fragments/match/:matchId[/stats|/timeline|/gold]` — htmx-loaded match-detail tabs (Overview, Stats, Timeline, Gold Graph) expanded from a row.
 
 Match detail also computes a 0–100 **performance score** per participant — global #1 gets the `MVP` badge, lowest score on each team gets `COOKED`. Tracked players show their solo-queue rank inline.

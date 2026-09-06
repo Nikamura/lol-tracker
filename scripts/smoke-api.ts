@@ -292,6 +292,13 @@ try {
   assert.deepEqual(empty.recentMatches, []);
 
   const match = await success<MatchDetail>("/api/v1/matches/EUW1_recent_0");
+  const matchPage = await app.request("/matches/EUW1_recent_0");
+  assert.equal(matchPage.status, 200);
+  const matchHtml = await matchPage.text();
+  assert.match(matchHtml, /<html/);
+  assert.match(matchHtml, /match-EUW1_recent_0-detail/);
+  assert.match(matchHtml, /\/fragments\/match\/EUW1_recent_0\/stats/);
+  assert.equal((await app.request("/matches/missing")).status, 404);
   assert.equal(match.matchId, "EUW1_recent_0");
   assert.equal(match.participants.length, 10);
   assert.equal(match.participants.find((p) => p.puuid === "P1")!.trackedDisplayName, "Ali");
