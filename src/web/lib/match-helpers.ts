@@ -248,7 +248,8 @@ const TEAM_LABEL: Record<number, string> = { 100: "Blue", 200: "Red" };
 
 export interface RenderableEvent {
   timestamp: number;
-  kind: "kill" | "objective" | "building" | "plate" | "soul";
+  kind: "kill" | "objective" | "building" | "plate" | "soul" | "ward";
+  participantIds?: number[];
   actorTeamId: number | undefined;
   actorChampion: string | undefined;
   victimChampion: string | undefined;
@@ -261,14 +262,33 @@ export function renderableEvents(match: Match, timeline: MatchTimeline): Rendera
   for (const frame of timelineFrames(timeline)) {
     for (const ev of frame.events) {
       const r = renderEvent(ev, match);
-      if (r) out.push(r);
+      if (r) out.push({ ...r, participantIds: [...new Set([
+        ev.killerId, ev.victimId, ev.creatorId, ...(ev.assistingParticipantIds ?? []),
+      ].filter((id): id is number => typeof id === "number" && id > 0))] });
     }
   }
-  return out;
+  return out.sort((a, b) => a.timestamp - b.timestamp);
 }
 
 function renderEvent(ev: TimelineEvent, match: Match): RenderableEvent | undefined {
   switch (ev.type) {
+    case "WARD_PLACED":
+    case "WARD_KILL": {
+      const actor = championByParticipantId(match, ev.type === "WARD_PLACED" ? ev.creatorId ?? 0 : ev.killerId ?? 0);
+      if (!actor) return undefined;
+      const wards: Record<string, string> = {
+        YELLOW_TRINKET: "a stealth ward", SIGHT_WARD: "a stealth ward",
+        CONTROL_WARD: "a control ward", BLUE_TRINKET: "a farsight ward",
+      };
+      // Riot also emits UNDEFINED ward events for non-ward champion objects.
+      const ward = wards[ev.wardType ?? ""];
+      if (!ward) return undefined;
+      return {
+        timestamp: ev.timestamp, kind: "ward", actorTeamId: actor.teamId,
+        actorChampion: actor.championName, victimChampion: undefined, assistChampions: [],
+        text: `${actor.championName} ${ev.type === "WARD_PLACED" ? "placed" : "destroyed"} ${ward}`,
+      };
+    }
     case "CHAMPION_KILL": {
       const killer = ev.killerId ? championByParticipantId(match, ev.killerId) : undefined;
       const victim = ev.victimId ? championByParticipantId(match, ev.victimId) : undefined;

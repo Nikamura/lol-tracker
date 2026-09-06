@@ -257,7 +257,7 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
       description: "Match results, player statistics, and timeline.",
       path: `/matches/${encodeURIComponent(matchId)}`,
     });
-    return c.render(<MatchTabs raw={raw} active="overview" />);
+    return c.render(<MatchTabs raw={raw} active={(["overview", "stats", "timeline", "graphs", "champions"] as string[]).includes(c.req.query("tab") ?? "") ? c.req.query("tab") as TabKey : "overview"} />);
   });
 
   const tabHandler = (active: TabKey) => (c: Context<{ Variables: Variables }>) => {
@@ -271,6 +271,8 @@ export function createApp(db: DB, options: CreateAppOptions = {}) {
   app.get("/fragments/match/:matchId/stats", tabHandler("stats"));
   app.get("/fragments/match/:matchId/timeline", tabHandler("timeline"));
   app.get("/fragments/match/:matchId/gold", tabHandler("gold"));
+  app.get("/fragments/match/:matchId/graphs", tabHandler("graphs"));
+  app.get("/fragments/match/:matchId/champions", tabHandler("champions"));
 
   app.get("/players/:puuid", (c) => {
     c.set("active", "players");

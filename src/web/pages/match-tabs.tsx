@@ -13,7 +13,6 @@ import { cn } from "../lib/cn.js";
 import {
   csOf,
   fmtClock,
-  goldByMinute,
   kpPercent,
   participantScores,
   rankMatch,
@@ -24,6 +23,8 @@ import {
   type ParticipantScore,
 } from "../lib/match-helpers.js";
 import { Badge } from "../components/ui.js";
+import { ChampionAnalysis } from "./champion-analysis.js";
+import { MatchGraphs } from "./match-graphs.js";
 
 const TIER_CODE: Record<string, string> = {
   IRON: "I",
@@ -79,13 +80,14 @@ function rankShort(r: RankInfo | undefined): string | undefined {
   return `${code}${div}`;
 }
 
-export type TabKey = "overview" | "stats" | "timeline" | "gold";
+export type TabKey = "overview" | "stats" | "timeline" | "gold" | "graphs" | "champions";
 
 const TABS: Array<{ key: TabKey; label: string; href: (id: string) => string }> = [
   { key: "overview", label: "Overview", href: (id) => `/fragments/match/${id}` },
   { key: "stats", label: "Stats", href: (id) => `/fragments/match/${id}/stats` },
   { key: "timeline", label: "Timeline", href: (id) => `/fragments/match/${id}/timeline` },
-  { key: "gold", label: "Gold Graph", href: (id) => `/fragments/match/${id}/gold` },
+  { key: "champions", label: "Champions", href: (id) => `/fragments/match/${id}/champions` },
+  { key: "graphs", label: "Graphs", href: (id) => `/fragments/match/${id}/graphs` },
 ];
 
 export interface MatchTabsProps {
@@ -113,8 +115,8 @@ const TabStrip: FC<{ raw: MatchRaw; active: TabKey; containerId: string }> = ({
   return (
     <nav class="border-b flex items-center gap-1 overflow-x-auto" role="tablist">
       {TABS.map((tab) => {
-        const disabled = !hasTimeline && (tab.key === "timeline" || tab.key === "gold");
-        const isActive = tab.key === active;
+        const disabled = !hasTimeline && (tab.key === "timeline" || tab.key === "graphs");
+        const isActive = tab.key === active || (tab.key === "graphs" && active === "gold");
         return (
           <button
             type="button"
@@ -142,10 +144,12 @@ const TabStrip: FC<{ raw: MatchRaw; active: TabKey; containerId: string }> = ({
 };
 
 const TabBody: FC<{ raw: MatchRaw; active: TabKey }> = ({ raw, active }) => {
+  if (active === "champions") return <ChampionAnalysis raw={raw} />;
   if (active === "overview") return <OverviewTab raw={raw} />;
   if (active === "stats") return <StatsTab raw={raw} />;
   if (active === "timeline") return <TimelineTab raw={raw} />;
-  if (active === "gold") return <GoldGraphTab raw={raw} />;
+  if (active === "gold") return <MatchGraphs raw={raw} initialMetric="teamGold" />;
+  if (active === "graphs") return <MatchGraphs raw={raw} />;
   return null;
 };
 
@@ -752,11 +756,26 @@ const TimelineTab: FC<{ raw: MatchRaw }> = ({ raw }) => {
   const events = renderableEvents(raw.match, tl);
   if (events.length === 0) return <EmptyTab message="No noteworthy events." />;
   return (
-    <ol class="flex flex-col">
+    <section data-match-events>
+      <div class="flex flex-wrap gap-4 mb-4 text-sm">
+        <label>Champion <select data-event-player class="border bg-background p-2">
+          <option value="all">All champions</option>
+          {raw.match.info.participants.filter((p) => p.participantId != null).map((p) => <option value={p.participantId}>{p.championName} — {raw.trackedNames.get(p.puuid) ?? p.riotIdGameName ?? p.summonerName ?? p.championName}</option>)}
+        </select></label>
+        <label>Events <select data-event-kind class="border bg-background p-2">
+          <option value="all">All events</option>
+          <option value="kill">Kills & assists</option>
+          <option value="objective soul">Epic monsters & souls</option>
+          <option value="building plate">Buildings & plates</option>
+          <option value="ward">Wards</option>
+        </select></label>
+      </div>
+      <p data-events-empty hidden class="text-muted-foreground py-6">No events for this selection.</p>
+      <ol class="flex flex-col">
       {events.map((ev) => {
         const teamColor = ev.actorTeamId === 100 ? "bg-sky-400" : ev.actorTeamId === 200 ? "bg-rose-400" : "bg-muted-foreground";
         return (
-          <li class="relative flex items-start gap-3 border-l py-2 pl-5">
+          <li data-event-row data-event-kind={ev.kind} data-event-players={ev.participantIds?.join(" ")} class="match-event-row relative flex items-start gap-3 border-l py-2 pl-5">
             <span class={cn("absolute left-0 top-3 size-2 -translate-x-1/2 rounded-full", teamColor)} />
             <span class="text-muted-foreground font-mono w-12 shrink-0 pt-px text-xs tabular-nums">
               {fmtClock(ev.timestamp)}
@@ -775,159 +794,14 @@ const TimelineTab: FC<{ raw: MatchRaw }> = ({ raw }) => {
           </li>
         );
       })}
-    </ol>
+      </ol>
+    </section>
   );
 };
 
 /* -------------------------------------------------------------------------- */
-/* Gold Graph                                                                 */
+/* Empty state                                                                */
 /* -------------------------------------------------------------------------- */
-
-const GoldGraphTab: FC<{ raw: MatchRaw }> = ({ raw }) => {
-  const tl = raw.timeline;
-  if (!tl) return <EmptyTab message="No timeline data for this match." />;
-  const rawFrames = goldByMinute(raw.match, tl);
-  if (rawFrames.length === 0) return <EmptyTab message="No gold data." />;
-
-  const friendsTeam =
-    raw.match.info.participants.find((p) => raw.trackedNames.has(p.puuid))?.teamId ?? 100;
-  const friendsBlue = friendsTeam === 100;
-  const frames = rawFrames.map((f) => ({
-    minute: f.minute,
-    delta: friendsBlue ? f.delta : -f.delta,
-  }));
-
-  const friendColor = friendsBlue ? "rgb(96 165 250)" : "rgb(251 113 133)";
-  const enemyColor = friendsBlue ? "rgb(251 113 133)" : "rgb(96 165 250)";
-  const friendTone = friendsBlue ? "text-sky-400" : "text-rose-400";
-  const enemyTone = friendsBlue ? "text-rose-400" : "text-sky-400";
-
-  const maxAbs = Math.max(1, ...frames.map((f) => Math.abs(f.delta)));
-  const width = Math.max(400, frames.length * 18);
-  const height = 220;
-  const padding = 24;
-  const innerW = width - padding * 2;
-  const innerH = height - padding * 2;
-  const barW = Math.max(4, innerW / frames.length - 2);
-  const mid = padding + innerH / 2;
-
-  const finalDelta = frames[frames.length - 1]?.delta ?? 0;
-  const highPeak = frames.reduce(
-    (acc, f) => (f.delta > acc.delta ? f : acc),
-    { minute: 0, delta: 0 },
-  );
-  const lowPeak = frames.reduce(
-    (acc, f) => (f.delta < acc.delta ? f : acc),
-    { minute: 0, delta: 0 },
-  );
-  const signed = (n: number) => `${n >= 0 ? "+" : ""}${n.toLocaleString()}`;
-
-  return (
-    <div class="flex flex-col gap-3">
-      <div class="text-muted-foreground flex flex-wrap items-baseline gap-x-5 gap-y-1 text-xs">
-        <span>
-          Final gold delta:{" "}
-          <span class={cn("font-mono", finalDelta >= 0 ? friendTone : enemyTone)}>
-            {signed(finalDelta)}
-          </span>{" "}
-          <span class="text-muted-foreground/70">(friends − enemy)</span>
-        </span>
-        <span>
-          Friend peak:{" "}
-          <span class={cn("font-mono", friendTone)}>{signed(highPeak.delta)}</span>{" "}
-          <span class="text-muted-foreground/70">@ {highPeak.minute}:00</span>
-        </span>
-        <span>
-          Enemy peak:{" "}
-          <span class={cn("font-mono", enemyTone)}>{signed(lowPeak.delta)}</span>{" "}
-          <span class="text-muted-foreground/70">@ {lowPeak.minute}:00</span>
-        </span>
-      </div>
-      <div class="overflow-x-auto rounded-lg border p-2">
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          width={width}
-          height={height}
-          class="block"
-          role="img"
-          aria-label="Gold differential over time (friends perspective)"
-        >
-          <line
-            x1={padding}
-            x2={width - padding}
-            y1={mid}
-            y2={mid}
-            stroke="currentColor"
-            stroke-opacity="0.25"
-            stroke-dasharray="2 4"
-          />
-          {frames.map((f, i) => {
-            const h = (Math.abs(f.delta) / maxAbs) * (innerH / 2);
-            const x = padding + i * (barW + 2);
-            const y = f.delta >= 0 ? mid - h : mid;
-            const fill = f.delta >= 0 ? friendColor : enemyColor;
-            return <rect x={x} y={y} width={barW} height={h} rx={1} fill={fill} fill-opacity="0.85" />;
-          })}
-          {highPeak.delta > 0 && (
-            <text
-              x={padding + highPeak.minute * (barW + 2) + barW / 2}
-              y={Math.max(padding - 2, mid - (highPeak.delta / maxAbs) * (innerH / 2) - 4)}
-              text-anchor="middle"
-              class="font-mono"
-              font-size="10"
-              fill={friendColor}
-            >
-              {signed(highPeak.delta)}
-            </text>
-          )}
-          {lowPeak.delta < 0 && (
-            <text
-              x={padding + lowPeak.minute * (barW + 2) + barW / 2}
-              y={Math.min(height - padding + 10, mid + (Math.abs(lowPeak.delta) / maxAbs) * (innerH / 2) + 10)}
-              text-anchor="middle"
-              class="font-mono"
-              font-size="10"
-              fill={enemyColor}
-            >
-              {signed(lowPeak.delta)}
-            </text>
-          )}
-          <text
-            x={padding}
-            y={padding - 6}
-            class="font-mono"
-            font-size="10"
-            fill="currentColor"
-            fill-opacity="0.55"
-          >
-            Friends ahead
-          </text>
-          <text
-            x={padding}
-            y={height - 8}
-            class="font-mono"
-            font-size="10"
-            fill="currentColor"
-            fill-opacity="0.55"
-          >
-            Enemy ahead
-          </text>
-          <text
-            x={width - padding}
-            y={height - 8}
-            text-anchor="end"
-            class="font-mono"
-            font-size="10"
-            fill="currentColor"
-            fill-opacity="0.55"
-          >
-            {frames.length - 1}:00
-          </text>
-        </svg>
-      </div>
-    </div>
-  );
-};
 
 const EmptyTab: FC<{ message: string }> = ({ message }) => (
   <div class="text-muted-foreground rounded-lg border border-dashed p-8 text-center text-sm">

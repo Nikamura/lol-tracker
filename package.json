@@ -15,13 +15,14 @@
     "build": "tsc -p tsconfig.json && pnpm run web:css --minify",
     "start": "node dist/cli.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "smoke": "tsx scripts/smoke.ts && tsx scripts/smoke-profile.ts && tsx scripts/smoke-mcp.ts && tsx scripts/smoke-api.ts",
+    "smoke": "tsx scripts/smoke.ts && tsx scripts/smoke-profile.ts && tsx scripts/smoke-mcp.ts && tsx scripts/smoke-api.ts && tsx scripts/smoke-match-graphs.ts",
     "smoke:api": "tsx scripts/smoke-api.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:reset": "node -e \"const fs=require('fs'); for (const f of ['./data/lol-tracker.db','./data/lol-tracker.db-shm','./data/lol-tracker.db-wal']) fs.rmSync(f, {force:true}); console.log('reset ok');\""
+    "db:reset": "node -e \"const fs=require('fs'); for (const f of ['./data/lol-tracker.db','./data/lol-tracker.db-shm','./data/lol-tracker.db-wal']) fs.rmSync(f, {force:true}); console.log('reset ok');\"",
+    "smoke:graphs": "tsx scripts/smoke-match-graphs.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.2",

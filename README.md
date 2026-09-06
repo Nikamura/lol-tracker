@@ -138,8 +138,48 @@ Pages:
 
 - `/` — party-grouped timeline (solo matches and stacks rendered side-by-side, grouped by team) with HTMX-driven filters (since / queue / player / limit). The filter form posts to `/fragments/timeline`, which returns an HTML fragment swapped into the page.
 - `/players` — tracked players with last-poll and last-match timestamps.
-- `/matches/:matchId` — shareable full match page with overview, stats and available timeline/gold tabs; used by Telegram result links.
-- `/fragments/match/:matchId[/stats|/timeline|/gold]` — htmx-loaded match-detail tabs (Overview, Stats, Timeline, Gold Graph) expanded from a row.
+- `/matches/:matchId` — shareable full match page with overview, stats and available timeline/graph tabs; used by Telegram result links.
+- `/fragments/match/:matchId[/stats|/timeline|/champions|/graphs]` — htmx-loaded match-detail tabs (Overview, Stats, Timeline, Champions, Graphs) expanded from a row.
+
+The Graphs tab compares every champion's damage dealt to champions, damage taken
+from all sources, CS (lane + jungle), total gold, level, and XP over game time.
+Champion checkboxes and All / Tracked / team presets control which lines appear.
+Hover or use the keyboard/touch time slider to read values at a shared timestamp.
+Team gold lead uses **blue minus red**, independent of champion selection, with
+peak leads retained. Blue champion lines are solid and red lines are dashed.
+
+Graphs use existing cached Match-V5 timeline snapshots; no new Riot requests,
+database migration, or client installation is needed. Missing fields create gaps,
+levels are not capped at 18, and the final partial-minute timestamp is retained.
+Level steps reflect sampled levels, not exact level-up event times. Matches without
+a timeline keep these tabs disabled. Link directly with
+`/matches/:matchId?tab=graphs`; the old `/fragments/match/:matchId/gold` URL still
+opens team gold lead.
+
+The Graphs tab also offers a head-to-head comparison at the selected sample,
+10/15/20-minute checkpoints (using the nearest sample within 30 seconds and
+labeling its actual time),
+play/pause controls, objective markers, and clickable key moments. The initial
+pair uses a tracked champion and an opponent with the same recorded role when
+available. Largest gold swing measures the change between adjacent complete
+samples; it is not a prediction or a claim about what caused the swing. Playback
+advances snapshots and stops on tab removal, a hidden document, or the final sample.
+
+The Champions tab shows per-minute output, physical/magic/true damage, team
+contribution shares, skill-point order with exact recorded timestamps, and the
+purchase/sale/undo ledger for each champion. Skill evolutions are not counted as
+normal points. Item names load from the match patch's official Data Dragon catalog,
+with item IDs retained if the catalog cannot load. Missing timelines still allow
+final champion analysis, with explicit empty states for skills and shopping.
+`/matches/:matchId?tab=champions` opens this view directly. Other detail tabs also
+accept their name in the `tab` query parameter.
+
+The Timeline tab filters by champion involvement (including deaths and assists)
+and event type, with recognized ward placements/destructions included. Unknown
+ward types are omitted because Riot can use them for non-ward champion objects.
+Blitz's rank-population benchmarks and win-probability model are outside this
+change: the local archive does not contain the data/model needed to reproduce them.
+Run `pnpm smoke:graphs` for isolated calculation and route checks.
 
 Match detail also computes a 0–100 **performance score** per participant — global #1 gets the `MVP` badge, lowest score on each team gets `COOKED`. Tracked players show their solo-queue rank inline.
 

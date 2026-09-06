@@ -172,13 +172,15 @@ export const MatchExpand: FC<{ matchId: string; label?: string }> = ({
         <polyline points="6 9 12 15 18 9" />
       </svg>
     </summary>
-    <div
-      class="border-t px-5 py-4"
-      hx-get={`/fragments/match/${matchId}`}
-      hx-trigger="toggle from:closest details once"
-      hx-swap="innerHTML"
-    >
-      <p class="text-muted-foreground text-xs">Loading…</p>
+    <div class="border-t px-5 py-4">
+      {/* Replace the loader so restored open details do not fetch Overview again. */}
+      <div
+        hx-get={`/fragments/match/${matchId}`}
+        hx-trigger="toggle from:closest details once"
+        hx-swap="outerHTML"
+      >
+        <p class="text-muted-foreground text-xs">Loading…</p>
+      </div>
     </div>
   </details>
 );

@@ -50,6 +50,7 @@ export const Layout: FC<
 
       <link rel="stylesheet" href="/static/app.css" />
       <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+      <script src="/static/match-graphs.js" defer></script>
       {/* 100% privacy-first analytics */}
       <script data-collect-dnt="true" async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
       <noscript>
