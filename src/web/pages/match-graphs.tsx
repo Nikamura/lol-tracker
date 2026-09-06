@@ -38,6 +38,7 @@ export const MatchGraphs: FC<{ raw: MatchRaw; initialMetric?: GraphMetric }> = (
       <p class="graph-description" data-graph-peaks hidden></p>
       <div class="graph-plot">
         <svg data-graph-svg viewBox="0 0 960 320" role="img" aria-label="Champion statistics over game time"></svg>
+        <div class="graph-tooltip" data-graph-tooltip role="tooltip" hidden></div>
         <p data-graph-empty hidden>No recorded values for this selection.</p>
       </div>
       <div class="graph-playback"><button type="button" data-graph-play aria-pressed="false">▶ Play timeline</button><span>One snapshot per step · not a game replay</span></div>

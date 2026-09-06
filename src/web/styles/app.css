@@ -761,3 +761,12 @@
   .graph-playback { align-items: start; }
   .graph-playback span { flex: 1; }
 }
+
+.graph-tooltip { position: absolute; z-index: 5; width: max-content; max-width: calc(100% - 8px); padding: .65rem; border: 1px solid var(--border); border-radius: 4px; background: var(--background); box-shadow: 0 6px 24px #0006; pointer-events: none; }
+.graph-tooltip[hidden] { display: none; }
+.graph-tooltip-heading { display: block; margin-bottom: .4rem; font-size: .75rem; }
+.graph-tooltip-row { display: flex; align-items: center; gap: .5rem; padding: .2rem .3rem; font-size: .7rem; border-radius: 2px; }
+.graph-tooltip-row i { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--series-color); }
+.graph-tooltip-row > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 210px; }
+.graph-tooltip-row b { font-family: 'JetBrains Mono',monospace; color: var(--series-color); margin-left: .4rem; }
+.graph-tooltip-row.is-focused { background: var(--accent); outline: 1px solid var(--series-color); }

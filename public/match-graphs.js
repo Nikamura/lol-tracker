@@ -14,6 +14,7 @@
   const graphPanels = new WeakSet();
   const championPanels = new WeakSet();
   const eventPanels = new WeakSet();
+  let dismissHover = null;
   function catalog(version) {
     if (!itemCatalogs.has(version)) itemCatalogs.set(version,
       fetch('https://ddragon.leagueoflegends.com/cdn/' + encodeURIComponent(version) + '/data/en_US/item.json')
@@ -51,6 +52,15 @@
       graphPanels.add(panel);
       const svg = panel.querySelector('[data-graph-svg]');
       const slider = panel.querySelector('[data-graph-time-slider]');
+      // An older HTMX history entry may predate the tooltip markup.
+      let tooltip = panel.querySelector('[data-graph-tooltip]');
+      if (!tooltip) {
+        tooltip = element('div', undefined, 'graph-tooltip');
+        tooltip.dataset.graphTooltip = '';
+        tooltip.setAttribute('role', 'tooltip');
+        tooltip.hidden = true;
+        svg.parentElement.append(tooltip);
+      }
       const checks = [...panel.querySelectorAll('[data-graph-player]')];
       let metric = panel.dataset.initialMetric;
       let index = data.timestamps.length - 1;
@@ -109,7 +119,61 @@
       let right = 942, bottom = 278, previousWidth = 0;
       const end = Math.max(1, data.timestamps[data.timestamps.length - 1]);
       x = ms => left + ms / end * (right - left);
+      function hideHover() {
+        if (dismissHover === hideHover) dismissHover = null;
+        tooltip.hidden = true;
+        svg.querySelectorAll('[data-graph-series]').forEach(path => {
+          path.setAttribute('opacity', '1'); path.setAttribute('stroke-width', '2.5');
+        });
+      }
+      function showHover(point) {
+        if (point.x < left || point.x > right || point.y < top || point.y > bottom) { hideHover(); return; }
+        const rows = visibleSeries.filter(series => series.values[index] != null);
+        if (!rows.length) { hideHover(); return; }
+        // Hit-test the drawn segment, not just the nearest minute's endpoint.
+        const ms = (point.x - left) / (right - left) * end;
+        let after = data.timestamps.findIndex(t => t >= ms);
+        if (after < 0) after = data.timestamps.length - 1;
+        const before = Math.max(0, after - 1);
+        let focused = null, distance = 18;
+        for (const series of rows) {
+          const a = series.values[before], b = series.values[after];
+          if (a == null || b == null) continue;
+          const span = data.timestamps[after] - data.timestamps[before];
+          const fraction = span ? (ms-data.timestamps[before])/span : 0;
+          const value = metric === 'level' && fraction < 1 ? a : a+(b-a)*fraction;
+          const d = Math.abs(y(value)-point.y);
+          if (d < distance) { distance=d; focused=series; }
+        }
+        tooltip.replaceChildren(element('strong', panel.querySelector('[data-graph-title]').textContent + ' · ' + clock(data.timestamps[index]), 'graph-tooltip-heading'));
+        for (const series of rows.slice().sort((a,b)=>b.values[index]-a.values[index])) {
+          const value = series.values[index];
+          const row = element('div', undefined, 'graph-tooltip-row' + (series===focused?' is-focused':''));
+          row.style.setProperty('--series-color', series.color);
+          row.append(element('i'));
+          const identity = series.player ? series.player.champion+' · '+series.player.name
+            : value === 0 ? 'Teams even' : (value>0?'Blue':'Red')+' team ahead';
+          const label = element('span',identity); label.title=identity;
+          row.append(label,element('b',format(metric==='teamGold'?Math.abs(value):value)));
+          tooltip.append(row);
+        }
+        svg.querySelectorAll('[data-graph-series]').forEach(path => {
+          const selected = focused && path.dataset.graphSeries === String(focused.player?.id ?? 'teamGold');
+          path.setAttribute('opacity',focused && !selected ? '.25' : '1');
+          path.setAttribute('stroke-width',selected?'4':'2.5');
+        });
+        if (dismissHover && dismissHover !== hideHover) dismissHover();
+        dismissHover = hideHover;
+        tooltip.hidden=false;
+        // Place beside the pointer and keep the panel within the chart, including on phones.
+        const rect=svg.getBoundingClientRect(), view=svg.viewBox.baseVal;
+        const px=point.x/view.width*rect.width, py=point.y/view.height*rect.height;
+        const tx=px+16+tooltip.offsetWidth<=rect.width?px+16:px-tooltip.offsetWidth-16;
+        tooltip.style.left=Math.max(4,Math.min(tx,rect.width-tooltip.offsetWidth-4))+'px';
+        tooltip.style.top=Math.max(4,Math.min(py+12,rect.height-tooltip.offsetHeight-4))+'px';
+      }
       function inspect(next) {
+        hideHover();
         index = next;
         slider.value = String(index);
         compare();
@@ -162,7 +226,7 @@
         visibleSeries = team
           ? [{ color: '#c6f36a', values: data.teamGold }]
           : data.players.filter(p => checks.find(c => Number(c.dataset.graphPlayer) === p.id).checked)
-            .map(p => ({ color: p.color, values: p.values[metric], teamId: p.teamId }));
+            .map(p => ({ color: p.color, values: p.values[metric], teamId: p.teamId, player: p }));
         const values = visibleSeries.flatMap(s => s.values.filter(v => v != null));
         panel.querySelector('[data-graph-empty]').hidden = values.length > 0;
         panel.querySelector('[data-graph-empty]').textContent = visibleSeries.length ? 'No recorded values for this selection.' : 'Select at least one champion.';
@@ -193,7 +257,7 @@
             // Isolated samples remain visible even when neighboring data is absent.
             if (series.values[i - 1] == null && series.values[i + 1] == null) svg.append(svgNode('circle', { cx: px, cy: py, r: 3, fill: series.color }));
           });
-          svg.append(svgNode('path', { d, fill: 'none', stroke: series.color, 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-dasharray': series.teamId === 200 ? '7 3' : 'none' }));
+          svg.append(svgNode('path', { d, fill: 'none', stroke: series.color, 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-dasharray': series.teamId === 200 ? '7 3' : 'none', 'data-graph-series': series.player?.id ?? 'teamGold' }));
         }
         for (const moment of data.moments.filter(m=>m.kind==='objective')) {
           const marker = svgNode('circle', {cx:x(moment.timestamp),cy:top+5,r:4,fill:moment.teamId===100?'#38bdf8':'#fb7185','data-graph-moment':moment.timestamp});
@@ -237,7 +301,7 @@
         },650);
       });
       slider.addEventListener('input', () => {stop(); inspect(Number(slider.value));});
-      svg.addEventListener('pointermove', event => {
+      function pointerHover(event) {
         if (playing) return;
         const matrix = svg.getScreenCTM();
         if (!matrix) return;
@@ -246,15 +310,19 @@
         let nearest = 0;
         data.timestamps.forEach((t, i) => { if (Math.abs(t - ms) < Math.abs(data.timestamps[nearest] - ms)) nearest = i; });
         inspect(nearest);
-      });
+        showHover(point);
+      }
+      svg.addEventListener('pointermove', pointerHover);
+      svg.addEventListener('pointerdown', pointerHover);
+      svg.addEventListener('pointerleave', hideHover);
       draw();
       // Observe the panel so embedded match rows and narrow screens keep legible axes.
       const observer = new ResizeObserver(() => {
-        if (!panel.isConnected) { observer.disconnect(); return; }
+        if (!panel.isConnected) { observer.disconnect(); hideHover(); return; }
         if (Math.abs(svg.getBoundingClientRect().width - previousWidth) > 1) draw();
       });
       observer.observe(panel);
-      panel.addEventListener('htmx:beforeCleanupElement', () => {observer.disconnect();stop();}, { once: true });
+      panel.addEventListener('htmx:beforeCleanupElement', () => {observer.disconnect();stop();hideHover();}, { once: true });
     });
     root.querySelectorAll('[data-match-events]').forEach(panel => {
       if (eventPanels.has(panel)) return;
@@ -279,4 +347,5 @@
   else hydrate(document);
   document.addEventListener('htmx:afterSwap', event => hydrate(event.target.parentElement || document));
   document.addEventListener('htmx:historyRestore', () => hydrate(document));
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && dismissHover) dismissHover(); });
 })();
