@@ -109,7 +109,7 @@ export const Badge: FC<PropsWithChildren<{ variant?: BadgeVariant; class?: strin
 );
 
 export const Table: FC<PropsWithChildren<{ class?: string }>> = ({ children, class: cls }) => (
-  <div class="relative w-full overflow-auto">
+  <div class="relative w-full scroll-x">
     <table class={cn("w-full caption-bottom text-sm", cls)}>{children}</table>
   </div>
 );

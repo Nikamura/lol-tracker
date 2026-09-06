@@ -13,7 +13,7 @@ export const Layout: FC<
   <html lang="en" class="dark">
     <head>
       <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       <title>{seo.title}</title>
       <meta name="description" content={seo.description} />
       {seo.canonical ? <link rel="canonical" href={seo.canonical} /> : null}

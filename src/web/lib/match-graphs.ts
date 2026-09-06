@@ -27,7 +27,7 @@ export interface MatchGraphData {
   timestamps: number[];
   players: GraphPlayer[];
   teamGold: Array<number | null>;
-  moments: Array<{timestamp: number; text: string; kind: string; teamId: number | null}>;
+  moments: Array<{timestamp: number; text: string; actorChampion?: string | undefined; kind: string; teamId: number | null}>;
 }
 
 const BLUE = ["#38bdf8", "#818cf8", "#2dd4bf", "#a5b4fc", "#67e8f9"];
@@ -92,7 +92,7 @@ export function matchGraphData(
     }).filter((event, index, events) =>
       event.kind === 'objective' || event.kind === 'building'
       || (event.kind === 'kill' && event.actorChampion && !events.slice(0,index).some(e=>e.kind==='kill' && e.actorChampion)))
-      .map(e=>({timestamp:e.timestamp, text:e.kind==='kill'?`First kill: ${e.text}`:e.text, kind:e.kind, teamId:e.actorTeamId??null})),
+      .map(e=>({timestamp:e.timestamp, text:e.kind==='kill'?`First kill: ${e.text}`:e.text, kind:e.kind, actorChampion:e.actorChampion, teamId:e.actorTeamId??null})),
     teamGold: frames.map((_, i) => {
       const blue = total(100, i), red = total(200, i);
       return blue === null || red === null ? null : blue - red;

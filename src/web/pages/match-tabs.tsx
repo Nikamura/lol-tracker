@@ -1,3 +1,4 @@
+import { MatchIcon, statIcon, eventIcon, type MatchIconName } from "../components/match-icon.js";
 import type { FC } from "hono/jsx";
 import type { MatchRaw, RankInfo } from "../../db/queries.js";
 import type { Match, MatchParticipant, MatchTimeline } from "../../riot/types.js";
@@ -135,7 +136,7 @@ const TabStrip: FC<{ raw: MatchRaw; active: TabKey; containerId: string }> = ({
               disabled && "cursor-not-allowed opacity-40",
             )}
           >
-            {tab.label}
+            <MatchIcon name={({overview:"overview",stats:"chart",timeline:"clock",champions:"champions",graphs:"chart",gold:"gold"} as Record<TabKey, MatchIconName>)[tab.key]} /> {tab.label}
           </button>
         );
       })}
@@ -256,7 +257,7 @@ const TeamPanel: FC<{
 
 const Stat: FC<{ label: string; value: string | number }> = ({ label, value }) => (
   <div class="flex items-baseline gap-1">
-    <dt class="text-muted-foreground/70 text-[10px] uppercase tracking-wide">{label}</dt>
+    <dt class="text-muted-foreground/70 text-[10px] uppercase tracking-wide"><MatchIcon name={statIcon(label)} /> {label}</dt>
     <dd class="text-foreground">{value}</dd>
   </div>
 );
@@ -624,7 +625,7 @@ const StatsTab: FC<{ raw: MatchRaw }> = ({ raw }) => {
                 colspan={participants.length + 1}
                 class="bg-muted/30 text-foreground/90 px-3 py-1.5 text-[11px] font-medium tracking-wide uppercase"
               >
-                Performance Score
+                <MatchIcon name="xp" /> Performance Score
               </td>
             </tr>
             {(
@@ -666,7 +667,7 @@ const StatsTab: FC<{ raw: MatchRaw }> = ({ raw }) => {
                   colspan={participants.length + 1}
                   class="bg-muted/30 text-foreground/90 px-3 py-1.5 text-[11px] font-medium tracking-wide uppercase"
                 >
-                  {section.title}
+                  <MatchIcon name={statIcon(section.title)} /> {section.title}
                 </td>
               </tr>
               {section.rows.map((row) => {
@@ -728,7 +729,7 @@ const StatLine: FC<{
   <tr class="border-b last:border-0">
     <td class="text-muted-foreground px-3 py-1.5" title={tooltip}>
       <span class={cn(tooltip && "decoration-dotted underline underline-offset-2")}>
-        {label}
+        <MatchIcon name={statIcon(label)} /> {label}
       </span>
     </td>
     {participants.map((p, i) => (
@@ -758,11 +759,11 @@ const TimelineTab: FC<{ raw: MatchRaw }> = ({ raw }) => {
   return (
     <section data-match-events>
       <div class="flex flex-wrap gap-4 mb-4 text-sm">
-        <label>Champion <select data-event-player class="border bg-background p-2">
+        <label><MatchIcon name="champions" /> Champion <select data-event-player class="border bg-background p-2">
           <option value="all">All champions</option>
           {raw.match.info.participants.filter((p) => p.participantId != null).map((p) => <option value={p.participantId}>{p.championName} — {raw.trackedNames.get(p.puuid) ?? p.riotIdGameName ?? p.summonerName ?? p.championName}</option>)}
         </select></label>
-        <label>Events <select data-event-kind class="border bg-background p-2">
+        <label><MatchIcon name="filter" /> Events <select data-event-kind class="border bg-background p-2">
           <option value="all">All events</option>
           <option value="kill">Kills & assists</option>
           <option value="objective soul">Epic monsters & souls</option>
@@ -780,6 +781,7 @@ const TimelineTab: FC<{ raw: MatchRaw }> = ({ raw }) => {
             <span class="text-muted-foreground font-mono w-12 shrink-0 pt-px text-xs tabular-nums">
               {fmtClock(ev.timestamp)}
             </span>
+            <span class="event-kind-icon" title={ev.kind}><MatchIcon name={eventIcon(ev.kind)} /></span>
             {ev.actorChampion ? (
               <img
                 src={championIcon(ver, ev.actorChampion)}
@@ -790,7 +792,7 @@ const TimelineTab: FC<{ raw: MatchRaw }> = ({ raw }) => {
             ) : (
               <span class="size-6" />
             )}
-            <span class="text-foreground pt-0.5 text-sm">{ev.text}</span>
+            <span class="text-foreground pt-0.5 text-sm">{ev.text}{ev.victimChampion && <img src={championIcon(ver,ev.victimChampion)} alt="" title={ev.victimChampion} class="event-victim-icon" width="24" height="24" loading="lazy" />}</span>
           </li>
         );
       })}

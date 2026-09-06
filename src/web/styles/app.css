@@ -626,7 +626,7 @@
 .graph-description, .graph-footnote { color: var(--muted-foreground); font-size: .75rem; line-height: 1.6; }
 .graph-description { min-height: 2.4em; }
 .graph-plot { position: relative; border: 1px solid var(--border); background: var(--card); margin-top: .6rem; }
-.graph-plot svg { display: block; width: 100%; height: auto; min-height: 210px; color: var(--muted-foreground); }
+.graph-plot > svg[data-graph-svg] { display: block; width: 100%; height: auto; min-height: 210px; color: var(--muted-foreground); }
 .graph-plot text { font: 11px 'JetBrains Mono', monospace; }
 .graph-plot > p { position: absolute; inset: 35% 10% auto; text-align: center; background: var(--card); padding: .8rem; font-size: .85rem; }
 .graph-scrubber { display: flex; align-items: center; gap: 1rem; font-size: .75rem; margin: .8rem 0 1.2rem; }
@@ -654,7 +654,7 @@
   .graph-roster { grid-template-columns: 1fr; }
   .graph-metrics span { padding: .45rem .6rem; font-size: .75rem; }
   .graph-heading output { font-size: .7rem; }
-  .graph-plot svg { min-height: 180px; }
+  .graph-plot > svg[data-graph-svg] { min-height: 180px; }
 }
 .match-event-row[hidden] { display: none; }
 
@@ -770,3 +770,34 @@
 .graph-tooltip-row > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 210px; }
 .graph-tooltip-row b { font-family: 'JetBrains Mono',monospace; color: var(--series-color); margin-left: .4rem; }
 .graph-tooltip-row.is-focused { background: var(--accent); outline: 1px solid var(--series-color); }
+
+/* One icon vocabulary across match navigation, metrics, and events. */
+.match-icon { display: inline-block; width: 1em; height: 1em; min-width: 1em; vertical-align: -.15em; flex-shrink: 0; }
+.champion-mini { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; border: 2px solid var(--series-color, var(--border)); object-fit: cover; }
+.graph-tooltip-row { min-height: 26px; gap: .4rem; padding: .1rem .3rem; }
+.graph-tooltip-row > .match-icon { color: var(--series-color); }
+.compare-select { display: flex; align-items: center; gap: .5rem; margin-top: .3rem; }
+.compare-select img { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
+.compare-select select { margin-top: 0; min-width: 0; flex: 1; }
+.moment-meta { display: flex; align-items: center; gap: .5rem; color: var(--moment-color); }
+.moment-meta img { border-radius: 50%; margin-left: auto; }
+.moment-meta time { flex: 1; }
+.skill-key { position: sticky; left: 0; z-index: 1; }
+.skill-key img { position: absolute; inset: 1px auto auto 1px; width: 28px; height: 28px; border-radius: 2px; }
+.skill-key > span { position: relative; margin-left: auto; padding: 2px; background: var(--card); font-size: .65rem; }
+.event-kind-icon { width: 24px; height: 24px; display: grid; place-items: center; color: var(--muted-foreground); flex-shrink: 0; }
+.event-victim-icon { display: inline-block; vertical-align: middle; border-radius: 50%; margin-left: .5rem; }
+.shop-action { white-space: nowrap; }
+
+/* Lock each nested scroller to its content axis instead of free two-axis panning. */
+.overflow-x-auto, .scroll-x, .skill-scroll, .gatsby-heatmap-scroll { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
+.moment-list { overflow-x: hidden; overflow-y: auto; touch-action: pan-y; overscroll-behavior-y: contain; }
+@media (max-width: 700px) {
+  html, body { touch-action: pan-x pan-y; }
+  /* 16px controls prevent iOS from zooming the page when a field gains focus. */
+  input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea,
+  .comparison-controls select { font-size: 16px; }
+  .graph-tooltip { padding: .4rem; }
+  .graph-tooltip-row { min-height: 24px; font-size: .65rem; }
+  .champion-mini { width: 20px; height: 20px; }
+}

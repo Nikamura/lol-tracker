@@ -10,6 +10,32 @@
     return node;
   }
   const itemCatalogs = new Map();
+  const abilityCatalogs = new Map();
+  function icon(name) {
+    const node = svgNode('svg', {class:'match-icon',width:16,height:16,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','stroke-width':1.7,'stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true',focusable:'false'});
+    node.append(svgNode('use',{href:'/static/match-icons.svg#'+name}));
+    return node;
+  }
+  function loadAbilities(panel) {
+    const active = panel.querySelector('[data-champion-panel]:not([hidden])');
+    if (!active?.dataset.championKey) return;
+    const version = panel.dataset.itemVersion, key = active.dataset.championKey;
+    const url = 'https://ddragon.leagueoflegends.com/cdn/'+encodeURIComponent(version)+'/data/en_US/champion/'+encodeURIComponent(key)+'.json';
+    if (!abilityCatalogs.has(url)) abilityCatalogs.set(url, fetch(url).then(r=>r.ok?r.json():null).catch(()=>null));
+    abilityCatalogs.get(url).then(json=>{
+      if (!active.isConnected) return;
+      const spells = json?.data?.[key]?.spells;
+      active.querySelectorAll('[data-ability-slot]').forEach(node=>{
+        const spell = spells?.[Number(node.dataset.abilitySlot)];
+        if (!spell?.image?.full || node.querySelector('img')) return;
+        const img = element('img'); img.alt=''; img.width=28; img.height=28;
+        img.src='https://ddragon.leagueoflegends.com/cdn/'+encodeURIComponent(version)+'/img/spell/'+encodeURIComponent(spell.image.full);
+        img.addEventListener('error',()=>img.remove(),{once:true});
+        node.title = node.textContent+' · '+spell.name;
+        node.prepend(img);
+      });
+    });
+  }
   // History snapshots serialize HTML, but cannot preserve event listeners.
   const graphPanels = new WeakSet();
   const championPanels = new WeakSet();
@@ -37,7 +63,9 @@
         if (!button) return;
         panel.querySelectorAll('[data-champion-pick]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
         panel.querySelectorAll('[data-champion-panel]').forEach(p => { p.hidden = p.dataset.championPanel !== button.dataset.championPick; });
+        loadAbilities(panel);
       });
+      loadAbilities(panel);
       catalog(panel.dataset.itemVersion).then(items => {
         if (!items || !panel.isConnected) return;
         panel.querySelectorAll('[data-item-name]').forEach(node => {
@@ -72,12 +100,24 @@
       const nearest = ms => data.timestamps.reduce((best,t,i) => Math.abs(t-ms)<Math.abs(data.timestamps[best]-ms)?i:best, 0);
       function stop() {
         clearInterval(playing); playing = null;
-        playButton.textContent = '▶ Play timeline';
+        playButton.replaceChildren(icon('play'),document.createTextNode(' Play timeline'));
         playButton.setAttribute('aria-pressed', 'false');
+      }
+      function portrait(player) {
+        const source = checks.find(c=>Number(c.dataset.graphPlayer)===player?.id)?.closest('label')?.querySelector('img');
+        if (!source) return null;
+        const img = element('img',undefined,'champion-mini');
+        img.src=source.src; img.alt=''; img.width=22; img.height=22;
+        return img;
       }
       function compare() {
         const a = data.players.find(p=>p.id===Number(focusSelect.value));
         const b = data.players.find(p=>p.id===Number(rivalSelect.value));
+        for (const [slot,player] of [['focus',a],['rival',b]]) {
+          const img = panel.querySelector('[data-compare-portrait="'+slot+'"]');
+          const source = portrait(player);
+          if (img) { img.hidden=!source; if(source) img.src=source.src; }
+        }
         const same = !a || !b || a.id===b.id;
         panel.querySelector('[data-compare-isolate]').disabled = same;
         panel.querySelector('[data-compare-caption]').textContent = same ? 'Choose two different champions.' : a.champion + ' minus ' + b.champion + ' at ' + clock(data.timestamps[index]);
@@ -87,7 +127,8 @@
           const av = a?.values[key][index], bv = b?.values[key][index];
           const delta = same || av == null || bv == null ? null : av-bv;
           const card = element('div', undefined, 'comparison-stat');
-          card.append(element('span',label),element('strong',delta==null?'—':(delta>0?'+':'')+format(delta)),element('small',format(av)+' vs '+format(bv)));
+          const heading=element('span'); heading.append(icon(key),document.createTextNode(' '+label));
+          card.append(heading,element('strong',delta==null?'—':(delta>0?'+':'')+format(delta)),element('small',format(av)+' vs '+format(bv)));
           container.append(card);
         }
         const checkpoints = panel.querySelector('[data-compare-checkpoints]');
@@ -150,7 +191,8 @@
           const value = series.values[index];
           const row = element('div', undefined, 'graph-tooltip-row' + (series===focused?' is-focused':''));
           row.style.setProperty('--series-color', series.color);
-          row.append(element('i'));
+          const face = series.player && portrait(series.player);
+          row.append(face || icon('gold'));
           const identity = series.player ? series.player.champion+' · '+series.player.name
             : value === 0 ? 'Teams even' : (value>0?'Blue':'Red')+' team ahead';
           const label = element('span',identity); label.title=identity;
@@ -293,7 +335,7 @@
       playButton.addEventListener('click', () => {
         if (playing) { stop(); return; }
         if(index===data.timestamps.length-1) inspect(0);
-        playButton.textContent='Ⅱ Pause'; playButton.setAttribute('aria-pressed','true');
+        playButton.replaceChildren(icon('pause'),document.createTextNode(' Pause')); playButton.setAttribute('aria-pressed','true');
         playing=setInterval(()=>{
           if(!panel.isConnected || document.hidden || index>=data.timestamps.length-1) {stop(); return;}
           inspect(index+1);

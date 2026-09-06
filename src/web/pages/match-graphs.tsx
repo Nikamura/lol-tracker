@@ -1,3 +1,4 @@
+import { MatchIcon, statIcon, eventIcon } from "../components/match-icon.js";
 import type { FC } from "hono/jsx";
 import type { MatchRaw } from "../../db/queries.js";
 import { fmtClock } from "../lib/match-helpers.js";
@@ -19,15 +20,15 @@ export const MatchGraphs: FC<{ raw: MatchRaw; initialMetric?: GraphMetric }> = (
     <section class="match-graphs" data-match-graphs={JSON.stringify(data)} data-initial-metric={initialMetric} aria-label="Match graphs">
       <div class="analysis-intro"><span class="analysis-eyebrow">THE SHAPE OF THE MATCH</span><h2>Find the turning points</h2><p>Compare champions, follow the economy, and jump into the moments that mattered.</p></div>
       <div class="match-highlights">
-        <div><span>Duration</span><strong>{fmtClock(raw.match.info.gameDuration*1000)}</strong><small>{data.players.length} champions · {data.timestamps.length} snapshots</small></div>
-        <div><span>Largest gold swing between samples</span><strong>{swing ? `${swing.value>=0?'Blue':'Red'} +${Math.abs(swing.value).toLocaleString()}` : '—'}</strong><small>{swing ? `${fmtClock(swing.from)} → ${fmtClock(swing.to)}` : 'Not enough samples'}</small></div>
-        <div><span>Recorded epic monster kills</span><strong>{data.moments.filter(m=>m.kind==='objective').length}</strong><small>Dragons, Baron, Herald & grubs</small></div>
+        <div><span><MatchIcon name="clock" /> Duration</span><strong>{fmtClock(raw.match.info.gameDuration*1000)}</strong><small>{data.players.length} champions · {data.timestamps.length} snapshots</small></div>
+        <div><span><MatchIcon name="gold" /> Largest gold swing between samples</span><strong>{swing ? `${swing.value>=0?'Blue':'Red'} +${Math.abs(swing.value).toLocaleString()}` : '—'}</strong><small>{swing ? `${fmtClock(swing.from)} → ${fmtClock(swing.to)}` : 'Not enough samples'}</small></div>
+        <div><span><MatchIcon name="monster" /> Recorded epic monster kills</span><strong>{data.moments.filter(m=>m.kind==='objective').length}</strong><small>Dragons, Baron, Herald & grubs</small></div>
       </div>
       <fieldset class="graph-metrics">
         <legend class="sr-only">Graph metric</legend>
         {GRAPH_METRICS.map((metric) => <label>
           <input type="radio" name={metricName} value={metric.key} checked={initialMetric === metric.key} data-graph-metric data-description={metric.description} />
-          <span>{metric.label}</span>
+          <span><MatchIcon name={statIcon(metric.label)} /> {metric.label}</span>
         </label>)}
       </fieldset>
       <div class="graph-heading">
@@ -41,15 +42,15 @@ export const MatchGraphs: FC<{ raw: MatchRaw; initialMetric?: GraphMetric }> = (
         <div class="graph-tooltip" data-graph-tooltip role="tooltip" hidden></div>
         <p data-graph-empty hidden>No recorded values for this selection.</p>
       </div>
-      <div class="graph-playback"><button type="button" data-graph-play aria-pressed="false">▶ Play timeline</button><span>One snapshot per step · not a game replay</span></div>
+      <div class="graph-playback"><button type="button" data-graph-play aria-pressed="false"><MatchIcon name="play" /> Play timeline</button><span>One snapshot per step · not a game replay</span></div>
       <label class="graph-scrubber">Inspect time
         <input type="range" data-graph-time-slider min="0" max={data.timestamps.length - 1} value={data.timestamps.length - 1} step="1" aria-label="Inspect game time" />
       </label>
       <section class="head-to-head" aria-label="Head-to-head comparison">
-        <div class="comparison-controls"><h4>Head to head</h4>
-          <label>Champion<select data-compare-focus>{data.players.map(p=><option value={p.id} selected={p.id===focus.id}>{p.champion} — {p.name}</option>)}</select></label>
-          <span class="compare-vs">VS</span><label>Compare with<select data-compare-rival>{data.players.map(p=><option value={p.id} selected={p.id===rival?.id}>{p.champion} — {p.name}</option>)}</select></label>
-          <button type="button" data-compare-isolate>Show this pair</button>
+        <div class="comparison-controls"><h4><MatchIcon name="compare" /> Head to head</h4>
+          <label>Champion<div class="compare-select"><img data-compare-portrait="focus" src={championIcon(version,focus.champion)} alt="" width="32" height="32"/><select data-compare-focus>{data.players.map(p=><option value={p.id} selected={p.id===focus.id}>{p.champion} — {p.name}</option>)}</select></div></label>
+          <span class="compare-vs">VS</span><label>Compare with<div class="compare-select"><img data-compare-portrait="rival" src={rival ? championIcon(version,rival.champion) : undefined} hidden={!rival} alt="" width="32" height="32"/><select data-compare-rival>{data.players.map(p=><option value={p.id} selected={p.id===rival?.id}>{p.champion} — {p.name}</option>)}</select></div></label>
+          <button type="button" data-compare-isolate><MatchIcon name="compare" /> Show this pair</button>
         </div>
         <p data-compare-caption class="graph-description"></p><div class="comparison-values" data-compare-values></div>
         <details class="comparison-checkpoints"><summary>Nearest samples to 10, 15 & 20 minutes</summary><div data-compare-checkpoints></div></details>
@@ -72,9 +73,9 @@ export const MatchGraphs: FC<{ raw: MatchRaw; initialMetric?: GraphMetric }> = (
           </label>)}
         </fieldset>)}
       </div>
-      <section class="key-moments"><div class="graph-heading"><h3>Key moments</h3><span class="analysis-eyebrow">JUMP TO A SNAPSHOT</span></div>
+      <section class="key-moments"><div class="graph-heading"><h3><MatchIcon name="clock" /> Key moments</h3><span class="analysis-eyebrow">JUMP TO A SNAPSHOT</span></div>
         <p class="graph-description">Event times are exact; clicking selects the nearest recorded snapshot.</p>
-        <div class="moment-list">{data.moments.map(m=><button type="button" data-graph-moment={m.timestamp} style={`--moment-color:${m.teamId===100?'#38bdf8':'#fb7185'}`}><time>{fmtClock(m.timestamp)}</time><span>{m.text}</span></button>)}</div>
+        <div class="moment-list">{data.moments.map(m=><button type="button" data-graph-moment={m.timestamp} style={`--moment-color:${m.teamId===100?'#38bdf8':'#fb7185'}`}><div class="moment-meta"><MatchIcon name={eventIcon(m.kind)} /><time>{fmtClock(m.timestamp)}</time>{m.actorChampion && <img src={championIcon(version,m.actorChampion)} alt="" width="24" height="24" loading="lazy" title={m.actorChampion}/>}</div><span>{m.text}</span></button>)}</div>
       </section>
       <p class="graph-footnote">Hover over the graph or move the time slider to compare champions at the same moment. Recorded snapshots are roughly one minute apart. Gaps mean unavailable data.</p>
       <noscript>Enable JavaScript to explore these graphs. The Stats tab contains the final match statistics.</noscript>

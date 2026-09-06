@@ -1,3 +1,4 @@
+import { MatchIcon, statIcon } from "../components/match-icon.js";
 import type { FC } from 'hono/jsx';
 import type { MatchRaw } from '../../db/queries.js';
 import { championIcon, ddragonVersion, itemIcon } from '../lib/ddragon.js';
@@ -30,7 +31,7 @@ export const ChampionAnalysis: FC<{raw: MatchRaw}> = ({raw}) => {
       const damageComplete = damage.every(d=>d.value != null);
       const damageSum = damage.reduce((sum,d)=>sum+(d.value??0),0);
       const minutes = raw.match.info.gameDuration / 60;
-      return <article data-champion-panel={p.puuid} hidden={p !== selected}>
+      return <article data-champion-key={p.championName === "FiddleSticks" ? "Fiddlesticks" : p.championName === "Wukong" ? "MonkeyKing" : p.championName} data-champion-panel={p.puuid} hidden={p !== selected}>
         <header class="champion-hero">
           <img src={championIcon(version,p.championName)} alt="" width="80" height="80"/>
           <div><span class="analysis-eyebrow">{p.teamId===100?'BLUE':'RED'} TEAM · {p.teamPosition || 'UNASSIGNED'} · {p.win?'VICTORY':'DEFEAT'}</span><h3>{p.championName}</h3><p>{raw.trackedNames.get(p.puuid) ?? p.riotIdGameName ?? p.summonerName}</p></div>
@@ -42,30 +43,30 @@ export const ChampionAnalysis: FC<{raw: MatchRaw}> = ({raw}) => {
             ['CS / min',minutes>0 && p.totalMinionsKilled!=null && p.neutralMinionsKilled!=null?csOf(p)/minutes:null],
             ['Kill participation',kpPercent(p,team)+'%'],
             ['Vision score',p.visionScore],
-          ].map(([label,value])=><div><span>{label}</span><strong>{typeof value==='string'?value:fmt(value as number|undefined|null)}</strong></div>)}
+          ].map(([label,value])=><div><span><MatchIcon name={statIcon(String(label))} /> {label}</span><strong>{typeof value==='string'?value:fmt(value as number|undefined|null)}</strong></div>)}
         </div>
         <div class="analysis-columns">
-          <section class="analysis-card"><h4>Damage profile</h4><p>Damage dealt to champions</p><strong class="analysis-total">{fmt(totalDamage)}</strong>
+          <section class="analysis-card"><h4><MatchIcon name="damage" /> Damage profile</h4><p>Damage dealt to champions</p><strong class="analysis-total">{fmt(totalDamage)}</strong>
             <div class="damage-composition" role="img" aria-label={damageComplete ? damage.map(d=>`${d.label}: ${fmt(d.value)}`).join(', ') : 'Damage breakdown unavailable'}>
               {damageComplete && damageSum>0 && damage.map(d=><span style={`width:${(d.value??0)/damageSum*100}%;background:${d.color}`} />)}
             </div>
-            <div class="damage-legend">{damage.map(d=><span><i style={`background:${d.color}`}/>{d.label}<b>{fmt(d.value)}</b></span>)}</div>
+            <div class="damage-legend">{damage.map(d=><span><i style={`background:${d.color}`}/><MatchIcon name={statIcon(d.label)} />{d.label}<b>{fmt(d.value)}</b></span>)}</div>
           </section>
-          <section class="analysis-card"><h4>Share of the team</h4><p>Final match contribution</p>
+          <section class="analysis-card"><h4><MatchIcon name="champions" /> Share of the team</h4><p>Final match contribution</p>
             {([
               ['Champion damage','totalDamageDealtToChampions'],['Gold earned','goldEarned'],['Turret damage','damageDealtToTurrets'],['Healing allies','totalHealsOnTeammates'],['Shielding allies','totalDamageShieldedOnTeammates'],
-            ] as const).map(([label,field])=>{const share=teamShare(p,team,field);return <div class="contribution-row"><span>{label}</span><b>{share==null?'—':share.toFixed(1)+'%'}</b><div><i style={`width:${share??0}%`}/></div></div>;})}
+            ] as const).map(([label,field])=>{const share=teamShare(p,team,field);return <div class="contribution-row"><span><MatchIcon name={statIcon(label)} /> {label}</span><b>{share==null?'—':share.toFixed(1)+'%'}</b><div><i style={`width:${share??0}%`}/></div></div>;})}
           </section>
         </div>
-        <section class="analysis-card"><h4>Skill order</h4><p>Recorded upgrade order, with the time each point was spent. Numbers inside each tile show ability rank.</p>
-          {build.skills.length ? <div class="skill-scroll"><div class="skill-grid" style={`grid-template-columns:32px repeat(${build.skills.length}, minmax(38px, 1fr))`}>
+        <section class="analysis-card"><h4><MatchIcon name="level" /> Skill order</h4><p>Recorded upgrade order, with the time each point was spent. Numbers inside each tile show ability rank.</p>
+          {build.skills.length ? <div class="skill-scroll"><div class="skill-grid" style={`grid-template-columns:48px repeat(${build.skills.length}, minmax(38px, 1fr))`}>
             <span/>{build.skills.map(s=><small>{s.order}</small>)}
-            {keys.map((key,i)=><><strong class={`skill-key skill-${key}`}>{key}</strong>{build.skills.map(s=><span class={s.slot===i+1?`skill-point skill-${key}`:'skill-blank'} title={s.slot===i+1?`${key} rank ${s.rank} at ${fmtClock(s.timestamp)}`:undefined}>{s.slot===i+1?s.rank:''}</span>)}</>)}
+            {keys.map((key,i)=><><strong class={`skill-key skill-${key}`} data-ability-slot={i}><span>{key}</span></strong>{build.skills.map(s=><span class={s.slot===i+1?`skill-point skill-${key}`:'skill-blank'} title={s.slot===i+1?`${key} rank ${s.rank} at ${fmtClock(s.timestamp)}`:undefined}>{s.slot===i+1?s.rank:''}</span>)}</>)}
             <span/>{build.skills.map(s=><small>{fmtClock(s.timestamp)}</small>)}
           </div></div>:<p class="analysis-empty">No skill upgrades recorded for this champion.</p>}
         </section>
-        <section class="analysis-card"><h4>Shopping history</h4><p>Purchases, sales, and undo actions in order. This is a transaction history; upgrades and consumed items are not an inventory replay.</p>
-          {build.shop.length?<ol class="shopping-list">{build.shop.map(e=><li><time>{fmtClock(e.timestamp)}</time><span class={`shop-action shop-${e.action.toLowerCase()}`}>{e.action}</span><div>{e.items.map(id=><span class="shop-item"><img src={itemIcon(version,id)} alt="" width="28" height="28" loading="lazy"/><span data-item-name={id}>Item {id}</span></span>)}</div></li>)}</ol>:<p class="analysis-empty">No shopping events recorded for this champion.</p>}
+        <section class="analysis-card"><h4><MatchIcon name="shop" /> Shopping history</h4><p>Purchases, sales, and undo actions in order. This is a transaction history; upgrades and consumed items are not an inventory replay.</p>
+          {build.shop.length?<ol class="shopping-list">{build.shop.map(e=><li><time>{fmtClock(e.timestamp)}</time><span class={`shop-action shop-${e.action.toLowerCase()}`}><MatchIcon name={e.action === "Undo" ? "undo" : e.action === "Sold" ? "sell" : "shop"} /> {e.action}</span><div>{e.items.map(id=><span class="shop-item"><img src={itemIcon(version,id)} alt="" width="28" height="28" loading="lazy"/><span data-item-name={id}>Item {id}</span></span>)}</div></li>)}</ol>:<p class="analysis-empty">No shopping events recorded for this champion.</p>}
         </section>
       </article>;
     })}
