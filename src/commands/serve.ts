@@ -8,6 +8,7 @@ import { checkKeyFingerprint } from "../lib/key-check.js";
 import { RiotClient } from "../riot/client.js";
 import { createRefreshController } from "../web/refresh.js";
 import { createApp } from "../web/server.js";
+import { refreshDdragonVersions } from "../web/lib/ddragon.js";
 
 export const serveCmd = defineCommand({
   meta: {
@@ -122,6 +123,8 @@ export const serveCmd = defineCommand({
       console.log(pc.dim("auto-poll disabled (poll-interval=0)"));
     }
 
+    await refreshDdragonVersions();
+    setInterval(() => void refreshDdragonVersions(), 60 * 60 * 1_000).unref();
     const app = createApp(db, {
       refresh: refreshCooldownSec > 0 ? refresh : undefined,
     });

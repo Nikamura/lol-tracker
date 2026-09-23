@@ -1,15 +1,35 @@
-const DEFAULT_VERSION = "14.24.1";
+import bundledVersions from "./ddragon-versions.json" with { type: "json" };
+
+let publishedVersions = bundledVersions.filter(version => /^\d+\.\d+\.\d+$/.test(version));
 const CDN = "https://ddragon.leagueoflegends.com/cdn";
 
 /**
- * Riot's `match.info.gameVersion` looks like "14.24.498.6553"; Data Dragon
- * publishes assets at "14.24.1". Take the first two segments and append ".1".
+ * Game patches can precede Data Dragon releases. Preserve historical patch
+ * assets when published, otherwise use the newest published version.
  */
 export function ddragonVersion(gameVersion: string | null | undefined): string {
-  if (!gameVersion) return DEFAULT_VERSION;
-  const parts = gameVersion.split(".");
-  if (parts.length < 2) return DEFAULT_VERSION;
-  return `${parts[0]}.${parts[1]}.1`;
+  const patch = gameVersion?.match(/^(\d+)\.(\d+)(?:\.|$)/);
+  return (patch && publishedVersions.find(version => version.startsWith(`${patch[1]}.${patch[2]}.`)))
+    || publishedVersions[0]!;
+}
+
+/** Keep the last known catalog on network errors; never invent a CDN version. */
+export async function refreshDdragonVersions(fetcher: typeof fetch = fetch): Promise<void> {
+  try {
+    const response = await fetcher("https://ddragon.leagueoflegends.com/api/versions.json", {
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data: unknown = await response.json();
+    if (!Array.isArray(data) || !data.length || !data.every(version => typeof version === "string")) {
+      throw new Error("Invalid version catalog");
+    }
+    const versions = data.filter(version => /^\d+\.\d+\.\d+$/.test(version));
+    if (!versions.length) throw new Error("Empty version catalog");
+    publishedVersions = versions;
+  } catch (error) {
+    console.warn("Data Dragon catalog refresh failed; keeping known published versions:", error);
+  }
 }
 
 const CHAMPION_NAME_FIXUPS: Record<string, string> = {
