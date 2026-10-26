@@ -13,7 +13,7 @@ importers:
         version: 2.0.2(hono@4.12.19)
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
-        version: 1.29.0(zod@3.25.76)
+        version: 1.29.0(zod@4.6.6)
       better-sqlite3:
         specifier: ^11.5.0
         version: 11.10.0
@@ -31,7 +31,7 @@ importers:
         version: 0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0)
       drizzle-zod:
         specifier: ^0.8.3
-        version: 0.8.3(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0))(zod@3.25.76)
+        version: 0.8.3(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0))(zod@4.6.6)
       hono:
         specifier: ^4.12.19
         version: 4.12.19
@@ -39,8 +39,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
       zod:
-        specifier: ^3.23.8
-        version: 3.25.76
+        specifier: ^4.6.6
+        version: 4.6.6
     devDependencies:
       '@tailwindcss/cli':
         specifier: ^4.3.0
@@ -78,11 +78,11 @@ packages:
 
   '@esbuild-kit/core-utils@3.3.2':
     resolution: {integrity: sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ==}
-    deprecated: 'Merged into tsx: https://tsx.is'
+    deprecated: 'Merged into tsx: https://tsx.hirok.io'
 
   '@esbuild-kit/esm-loader@2.6.5':
     resolution: {integrity: sha512-FxEMIkJKnodyA1OaCUoEvbYRkoZlLZ4d/eXFu9Fh8CbBBgP5EmZxrfTRyN0qpXZ4vOvqnE5YdRdcrmUUXuU+dA==}
-    deprecated: 'Merged into tsx: https://tsx.is'
+    deprecated: 'Merged into tsx: https://tsx.hirok.io'
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -1608,8 +1608,8 @@ packages:
     peerDependencies:
       zod: ^3.25.28 || ^4
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+  zod@4.6.6:
+    resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
 
 snapshots:
 
@@ -1877,7 +1877,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@modelcontextprotocol/sdk@1.29.0(zod@3.25.76)':
+  '@modelcontextprotocol/sdk@1.29.0(zod@4.6.6)':
     dependencies:
       '@hono/node-server': 1.19.14(hono@4.12.19)
       ajv: 8.20.0
@@ -1894,8 +1894,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 3.25.76
-      zod-to-json-schema: 3.25.2(zod@3.25.76)
+      zod: 4.6.6
+      zod-to-json-schema: 3.25.2(zod@4.6.6)
     transitivePeerDependencies:
       - supports-color
 
@@ -2199,10 +2199,10 @@ snapshots:
       '@types/better-sqlite3': 7.6.13
       better-sqlite3: 11.10.0
 
-  drizzle-zod@0.8.3(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0))(zod@3.25.76):
+  drizzle-zod@0.8.3(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0))(zod@4.6.6):
     dependencies:
       drizzle-orm: 0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0)
-      zod: 3.25.76
+      zod: 4.6.6
 
   dunder-proto@1.0.1:
     dependencies:
@@ -2847,8 +2847,8 @@ snapshots:
       y18n: 5.0.8
       yargs-parser: 21.1.1
 
-  zod-to-json-schema@3.25.2(zod@3.25.76):
+  zod-to-json-schema@3.25.2(zod@4.6.6):
     dependencies:
-      zod: 3.25.76
+      zod: 4.6.6
 
-  zod@3.25.76: {}
+  zod@4.6.6: {}
