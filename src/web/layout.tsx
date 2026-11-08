@@ -54,15 +54,8 @@ export const Layout: FC<
       <link rel="stylesheet" href="/static/app.css" />
       <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
       <script src="/static/match-graphs.js" defer></script>
-      {/* 100% privacy-first analytics */}
-      <script data-collect-dnt="true" async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
-      <noscript>
-        <img
-          src="https://queue.simpleanalyticscdn.com/noscript.gif?collect-dnt=true"
-          alt=""
-          referrerpolicy="no-referrer-when-downgrade"
-        />
-      </noscript>
+      {/* Self-hosted, cookie-free analytics */}
+      <script data-goatcounter="https://lol-stats.cn.lt/count" async src="https://lol-stats.cn.lt/count.js"></script>
     </head>
     <body class="min-h-screen bg-background text-foreground">
       <a class="skip-link" href="#main-content">Skip to content</a>
