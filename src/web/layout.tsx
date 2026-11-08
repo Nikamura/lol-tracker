@@ -55,7 +55,7 @@ export const Layout: FC<
       <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
       <script src="/static/match-graphs.js" defer></script>
       {/* Self-hosted, cookie-free analytics */}
-      <script data-goatcounter="https://lol-stats.cn.lt/count" async src="https://lol-stats.cn.lt/count.js"></script>
+      <script data-goatcounter="/stats/count" async src="/stats/count.js"></script>
     </head>
     <body class="min-h-screen bg-background text-foreground">
       <a class="skip-link" href="#main-content">Skip to content</a>
